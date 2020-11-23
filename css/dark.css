@@ -1,0 +1,52 @@
+.header {
+  background: #000;
+  color: #fff;
+}
+
+body {
+  background-color: #333;
+  color: #fff;
+}
+
+input, select, button {
+  background-color: #333;
+  color: #fff;
+}
+
+.footer button {
+  border-color: #fff;
+  background-color: #333;
+  color: #fff;
+}
+
+.footer button:hover {
+  background-color: #fff;
+  color: #333;
+}
+
+.remix button {
+  border-color: #fff;
+  color: #fff;
+}
+
+.remix button:hover {
+  background-color: #fff;
+}
+
+#notSupported {
+  background-color: red;
+  color: white;
+}
+
+.timestamp {
+  color: #8ec641;
+}
+
+.debug-function {
+  color: #8ec641;
+}
+
+#log {
+  background-color: #000;
+  color: #cecece;
+}
