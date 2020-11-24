@@ -78,7 +78,7 @@ let activePanels = [];
 let bytesReceived = 0;
 let currentBoard;
 let buttonState = 0;
-let inputBuffer = "";
+let inputBuffer = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   butConnect.addEventListener('click', clickConnect);
@@ -139,19 +139,9 @@ async function connect() {
   
   logMsg("connected successfully.")
 
-  const encoder = new TextEncoderStream();
-  outputDone = encoder.readable.pipeTo(port.writable);
-  outputStream = encoder.writable;
-
-  logMsg("Output Stream initialized")
-
-  let decoder = new TextDecoderStream();
-  inputDone = port.readable.pipeTo(decoder.writable);
-  inputStream = decoder.readable;
+  outputStream = port.writable;
+  inputStream = port.readable;
   
-  logMsg("Input Stream initialized")
-
-  reader = inputStream.getReader();
   readLoop().catch((error) => {
     toggleUIConnected(false);
   });
@@ -197,19 +187,6 @@ function toUTF8Array(str) {
 }
 
 /**
- * @name toUTF8Array
- * Convert a string to a UTF8 byte array
- */
-function fromUTF8Array(utf8) {
-  let str = "";
-  for (let i = 0; i < utf8.length; i++) {
-    let charcode = utf8[i];
-    str = str + String.fromCharCode(charcode)
-  }
-  return str;
-}
-
-/**
  * @name disconnect
  * Closes the Web Serial connection.
  */
@@ -238,6 +215,7 @@ async function disconnect() {
  * Reads data from the input stream and places it in the inputBuffer
  */
 async function readLoop() {
+  const reader = port.readable.getReader();
   while (true) {
     const { value, done } = await reader.read();
 
@@ -248,8 +226,7 @@ async function readLoop() {
     }
     debugMsg("Incoming Data:", value);
     console.log(value);
-    console.log(new Uint8Array(value));
-    inputBuffer += value;
+    inputBuffer = inputBuffer.concat(value);
   }
 }
 
@@ -282,6 +259,8 @@ function debugMsg(...args) {
       logMsg(prefix + arg ? "true" : "false");
     } else if (Array.isArray(arg)) {
       logMsg(prefix + "[" + arg.map(value => toHex(value)).join(", ") + "]");
+    } else if (typeof arg == "object" && (arg instanceof Uint8Array)) {
+      logMsg(prefix + "[" + Array.from(arg).map(value => toHex(value)).join(", ") + "]");
     } else {
       logMsg(prefix + "Unhandled type of argument:" + typeof arg);
       console.log(arg)
@@ -300,7 +279,7 @@ function toHex(value) {
  */
 async function writeToStream(data) {
   const writer = outputStream.getWriter();
-  await writer.write(String.fromCharCode(...data));
+  await writer.write(new Uint8Array(data));
   writer.releaseLock();
 }
 
@@ -604,7 +583,7 @@ let espTool = {
    */
   sendCommand: function(opcode, buffer) {
     debugMsg("Running Send Command");
-    inputBuffer = ""; // Reset input buffer
+    inputBuffer = []; // Reset input buffer
     let checksum = 0;
     if (opcode == 0x03) {
       checksum = this.checksum(buffer.slice(16));
@@ -638,8 +617,7 @@ let espTool = {
      
     while (Date.now() - stamp < timeout) {
       if (inputBuffer.length > 0) {
-        let c = inputBuffer[0];
-        inputBuffer = inputBuffer.substring(1);
+        let c = inputBuffer.shift();
         if (c == 0xDB) {
           escaped_byte = true;
         } else if (escaped_byte) {
