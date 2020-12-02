@@ -822,7 +822,7 @@ let espTool = {
     port.baudRate = baud;
     await sleep(50);
     await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
-    debugMsg("Changed baud rate to " + port.baudRate);
+    logMsg("Changed baud rate to " + port.baudRate);
   },
 
   pack: function(...args) {
