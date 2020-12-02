@@ -34,7 +34,7 @@
   color: #000;
 }
 
-button {
+button, #firmware + label {
   height: 25px;
   font-size: 16px;
   border-radius: 15px;
@@ -109,8 +109,34 @@ div.clear {
   font-weight: 500;
 }
 
+#app.connected #commands {
+  height: 80px;
+}
+
+#app.connected #log {
+  height: calc(100vh - 410px);
+}
+
+#app #commands {
+  height: 0;
+}
+
+#app #log {
+  height: calc(100vh - 330px);
+}
+
+#commands, #log {
+  transition: height 0.5s;
+}
+
+#commands {
+  position: relative;
+  margin: 0 auto;
+  overflow-y: auto;
+  padding: 0 60px;
+}
+
 #log {
-  height: calc(80vh - 190px);
   max-width: 100%;
   font-family: pt-mono, monospace;
   font-style: normal;
@@ -123,6 +149,8 @@ div.clear {
   border: 20px solid #000;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  background-color: #000;
+  color: #cecece;
 }
 
 #log::-webkit-scrollbar {
@@ -144,7 +172,7 @@ div.clear {
 .remix {
   display: flex;
   justify-content: center;
-  height: 110px;
+  height: 60px;
   position: relative;
 }
 
@@ -256,4 +284,44 @@ div.clear {
 
 #butClear {
   margin-top: 10px;
+}
+
+#commands {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  align-items: center;
+}
+
+#firmware {
+	width: 0.1px;
+	height: 0.1px;
+	opacity: 0;
+	overflow: hidden;
+	position: absolute;
+	z-index: -1;
+}
+
+#firmware + label {
+  border-style: solid;
+  margin-left: 20px;
+  display:flex;
+  align-items: center;
+  cursor: pointer; /* "hand" cursor */
+}
+
+#firmware + label span {
+  margin-left: 10px;
+}
+
+.debug-function {
+  color: #8ec641;
+}
+
+.error-message {
+  color: #c64141;
+}
+
+.timestamp {
+  color: #8ec641;
 }

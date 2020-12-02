@@ -38,16 +38,22 @@ input, select, button {
   background-color: #333;
 }
 
-.timestamp {
-  color: #8ec641;
+#firmware + label {
+  border-color: #63338f;
+  color: #63338f;
 }
 
-.debug-function {
-  color: #8ec641;
+#firmware:focus + label,
+#firmware + label:hover {
+  background-color: #63338f;
+  color: #fff;
 }
 
-#log {
-  background-color: #000;
-  color: #cecece;
+#firmware:disabled + label {
+  color: #ccc;
+  border-color: #ccc;
 }
 
+#firmware:disabled + label:hover {
+  background-color: #fff;
+}

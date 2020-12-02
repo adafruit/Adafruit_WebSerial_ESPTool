@@ -10,12 +10,11 @@
 
 let port;
 let reader;
-let inputDone;
-let outputDone;
 let inputStream;
 let outputStream;
+let isConnected = false;
 
-const baudRates = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 74880, 115200, 230400, 250000, 500000, 1000000, 2000000];
+const baudRates = [921600, 115200, 230400, 460800];
 const flashSizes = {
     "512KB": 0x00,
     "256KB": 0x10,
@@ -29,17 +28,18 @@ const flashSizes = {
 };
 
 const FLASH_WRITE_SIZE = 0x200;
+const ESP32S2_FLASH_WRITE_SIZE = 0x400;
 const FLASH_SECTOR_SIZE = 0x1000;  // Flash sector size, minimum unit of erase.
 const ESP_ROM_BAUD = 115200;
-const DEFAULT_TIMEOUT = 3000;
 
 const SYNC_PACKET = toUTF8Array("\x07\x07\x12 UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU");
-const SYNC_TIMEOUT = 100;          // timeout for syncing with bootloader in ms
 const CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000;
 const ESP8266 = 0x8266;
 const ESP32 = 0x32;
+const ESP32S2 = 0x3252;
 const ESP32_DATAREGVALUE = 0x15122500;
 const ESP8266_DATAREGVALUE = 0x00062000;
+const ESP32S2_DATAREGVALUE = 0x500;
 
 // Commands supported by ESP8266 ROM bootloader
 const ESP_FLASH_BEGIN = 0x02;
@@ -52,11 +52,23 @@ const ESP_SYNC = 0x08;
 const ESP_WRITE_REG = 0x09;
 const ESP_READ_REG = 0x0A;
 
+const ESP_ERASE_FLASH = 0xD0;
+const ESP_ERASE_REGION = 0xD1;
+
 const ESP_SPI_SET_PARAMS = 0x0B;
 const ESP_SPI_ATTACH = 0x0D;
 const ESP_CHANGE_BAUDRATE = 0x0F;
 const ESP_SPI_FLASH_MD5 = 0x13;
 const ESP_CHECKSUM_MAGIC = 0xEF;
+
+const ROM_INVALID_RECV_MSG = 0x05;
+
+// Timeouts
+const DEFAULT_TIMEOUT = 3000;
+const CHIP_ERASE_TIMEOUT = 600000;             // timeout for full chip erase in ms
+const MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2;    // longest any command can run in ms
+const SYNC_TIMEOUT = 100;                      // timeout for syncing with bootloader in ms
+const ERASE_REGION_TIMEOUT_PER_MB = 30000;     // timeout (per megabyte) for erasing a region in ms
 
 const bufferSize = 512;
 const colors = ['#00a7e9', '#f89521', '#be1e2d'];
@@ -67,10 +79,14 @@ const log = document.getElementById('log');
 const butConnect = document.getElementById('butConnect');
 const baudRate = document.getElementById('baudRate');
 const butClear = document.getElementById('butClear');
+const offset = document.getElementById('offset');
+const butErase = document.getElementById('butErase');
 const autoscroll = document.getElementById('autoscroll');
 const lightSS = document.getElementById('light');
 const darkSS = document.getElementById('dark');
 const darkMode = document.getElementById('darkmode');
+const firmware = document.getElementById('firmware');
+const appDiv = document.getElementById('app');
 const butRemix = document.querySelector(".remix button");
 
 let colorIndex = 0;
@@ -81,12 +97,23 @@ let buttonState = 0;
 let inputBuffer = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-  butConnect.addEventListener('click', clickConnect);
+  butConnect.addEventListener('click', () => {
+    clickConnect().catch(async (e) => {
+      errorMsg(e.message);
+      disconnect();
+      toggleUIConnected(false);
+    });
+  });
   butClear.addEventListener('click', clickClear);
+  //butErase.addEventListener('click', clickErase);
   autoscroll.addEventListener('click', clickAutoscroll);
+  baudRate.addEventListener('change', changeBaudRate);
   darkMode.addEventListener('click', clickDarkMode);
   butRemix.addEventListener('click', remix);
-
+  firmware.addEventListener('change', uploadFirmware);
+  window.addEventListener('error', function(event) {
+    console.log("Got an uncaught error: ", event.error)
+  });
   if ('serial' in navigator) {
     const notSupported = document.getElementById('notSupported');
     notSupported.classList.add('hidden');
@@ -111,16 +138,16 @@ function remix() {
 async function connect() {
   // - Request a port and open a connection.
   port = await navigator.serial.requestPort();
-  
+
   /*
   Baud Rate should start at 115200
   on ESP8266, we can't change
-  On ESP32, we can change after the inital 115200
+  On ESP32 (and ESP32-S2), we can change after the inital 115200
   */
-  
+
   logMsg("Connecting...")
   // - Wait for the port to open.toggleUIConnected
-  await port.open({ baudRate: 115200 });
+  await port.open({ baudRate: ESP_ROM_BAUD });
 
   // Turn off Serial Break signal.
   await port.setSignals({ break: false });
@@ -132,16 +159,12 @@ async function connect() {
   await port.setSignals({ requestToSend: false });
 
   const signals = await port.getSignals();
-  debugMsg(`Clear To Send:       ${signals.clearToSend}`);
-  debugMsg(`Data Carrier Detect: ${signals.dataCarrierDetect}`);
-  debugMsg(`Data Set Ready:      ${signals.dataSetReady}`);
-  debugMsg(`Ring Indicator:      ${signals.ringIndicator}`);
-  
-  logMsg("connected successfully.")
+
+  logMsg("Connected successfully.")
 
   outputStream = port.writable;
   inputStream = port.readable;
-  
+
   readLoop().catch((error) => {
     toggleUIConnected(false);
   });
@@ -191,21 +214,17 @@ function toUTF8Array(str) {
  * Closes the Web Serial connection.
  */
 async function disconnect() {
-  
+  toggleUIToolbar(false);
   if (reader) {
     await reader.cancel();
-    await inputDone.catch(() => {});
     reader = null;
-    inputDone = null;
   }
 
   if (outputStream) {
     await outputStream.getWriter().close();
-    await outputDone;
     outputStream = null;
-    outputDone = null;
   }
-  
+
   await port.close();
   port = null;
 }
@@ -215,18 +234,15 @@ async function disconnect() {
  * Reads data from the input stream and places it in the inputBuffer
  */
 async function readLoop() {
-  const reader = port.readable.getReader();
+  reader = port.readable.getReader();
   while (true) {
     const { value, done } = await reader.read();
 
     if (done) {
-      debugMsg('DONE', done);
       reader.releaseLock();
       break;
     }
-    debugMsg("Incoming Data:", value);
-    console.log(value);
-    inputBuffer = inputBuffer.concat(value);
+    inputBuffer = inputBuffer.concat(Array.from(value));
   }
 }
 
@@ -263,14 +279,23 @@ function debugMsg(...args) {
       logMsg(prefix + "[" + Array.from(arg).map(value => toHex(value)).join(", ") + "]");
     } else {
       logMsg(prefix + "Unhandled type of argument:" + typeof arg);
-      console.log(arg)
+      console.log(arg);
     }
     prefix = "";  // Only show for first argument
   }
 }
 
-function toHex(value) {
-  return "0x" + value.toString(16).padStart(2, "0");
+function errorMsg(text) {
+  logMsg('<span class="error-message">Error:</span> ' + text);
+  console.log(text);
+}
+
+function formatMacAddr(macAddr) {
+  return macAddr.map(value => value.toString(16).toUpperCase().padStart(2, "0")).join(":");
+}
+
+function toHex(value, size=2) {
+  return "0x" + value.toString(16).toUpperCase().padStart(size, "0");
 }
 
 /**
@@ -282,7 +307,6 @@ async function writeToStream(data) {
   await writer.write(new Uint8Array(data));
   writer.releaseLock();
 }
-
 
 /**
  * @name updateTheme
@@ -329,12 +353,25 @@ async function clickConnect() {
     return;
   }
 
-  await connect().then(_ => {
-    toggleUIConnected(true);
-    if (!espTool.sync()) {
-      debugMsg("Unable to Sync");
+  await connect();
+  toggleUIConnected(true);
+  try {
+    if (await espTool.sync()) {
+      toggleUIToolbar(true);
+      appDiv.classList.add("connected");
+      let baud = parseInt(baudRate.value);
+      if (baudRates.includes(baud) && baud != ESP_ROM_BAUD) {
+        await espTool.setBaudrate(baud);
+      }
+      logMsg("Connected to " + await espTool.chipName());
+      logMsg("MAC Address: " + formatMacAddr(espTool.macAddr()));
     }
-  }).catch(() => {});  
+  } catch(e) {
+    errorMsg(e);
+    await disconnect();
+    toggleUIConnected(false);
+    return;
+  }
 }
 
 /**
@@ -343,12 +380,12 @@ async function clickConnect() {
  */
 async function changeBaudRate() {
   saveSetting('baudrate', baudRate.value);
-}
-
-async function onDisconnected(event) {
-  //let disconnectedDevice = event.target;
-
-  toggleUIConnected(false);
+  if (isConnected) {
+    let baud = parseInt(baudRate.value);
+    if (baudRates.includes(baud)) {
+      await espTool.setBaudrate(baud);
+    }
+  }
 }
 
 /**
@@ -368,6 +405,20 @@ async function clickDarkMode() {
   saveSetting('darkmode', darkMode.checked);
 }
 
+/**
+ * @name clickErase
+ * Click handler for the erase button.
+ */
+async function clickErase() {
+  baudRate.disabled = true;
+  try {
+    await espTool.eraseFlash();
+  } catch(e) {
+    errorMsg(e);
+  } finally {
+    baudRate.disabled = false;
+  }
+}
 
 /**
  * @name clickClear
@@ -377,6 +428,28 @@ async function clickClear() {
   reset();
 }
 
+async function uploadFirmware() {
+  let binfile = firmware.files[0];
+  const reader = new FileReader();
+  reader.addEventListener('load', async (event) => {
+    baudRate.disabled = true;
+    firmware.disabled = true;
+    let label	= firmware.nextElementSibling;
+    let labelVal = label.innerHTML;
+    try {
+      label.querySelector('span').innerHTML = "Programming...";
+      await espTool.flashData(event.target.result, parseInt(offset.value, 16));
+    } catch(e) {
+      errorMsg(e);
+    } finally {
+      label.innerHTML = labelVal;
+      baudRate.disabled = false;
+      firmware.disabled = false;
+    }
+  });
+  reader.readAsArrayBuffer(binfile);
+}
+
 function convertJSON(chunk) {
   try {
     let jsonObj = JSON.parse(chunk);
@@ -384,6 +457,18 @@ function convertJSON(chunk) {
   } catch (e) {
     return chunk;
   }
+}
+
+function toggleUIToolbar(show) {
+  isConnected = show;
+  if (show) {
+    appDiv.classList.add("connected");
+  } else {
+    appDiv.classList.remove("connected");
+  }
+  firmware.disabled = !show;
+  offset.disabled = !show;
+  //butErase.disabled = !show;
 }
 
 function toggleUIConnected(connected) {
@@ -423,10 +508,10 @@ function sleep(ms) {
 }
 
 let espTool = {
-
-  chipFamily: null,
-  efuses: [0, 0, 0, 0],
-  debug: true,
+  _chipfamily: null,
+  _efuses: new Array(4).fill(0),
+  _flashsize: 4 * 1024 * 1024,
+  debug: false,
 
   /**
    * @name slipEncode
@@ -453,12 +538,12 @@ let espTool = {
    */
   macAddr: function() {
     let macAddr = new Array(6).fill(0);
-    let mac0 = this.efuses[0];
-    let mac1 = this.efuses[1];
-    let mac2 = this.efuses[2];
-    let mac3 = this.efuses[3];
+    let mac0 = this._efuses[0];
+    let mac1 = this._efuses[1];
+    let mac2 = this._efuses[2];
+    let mac3 = this._efuses[3];
     let oui;
-    if (this.chipFamily == ESP8266) {
+    if (this._chipfamily == ESP8266) {
       if (mac3 != 0) {
         oui = [(mac3 >> 16) & 0xFF, (mac3 >> 8) & 0xFF, mac3 & 0xFF];
       } else if (((mac1 >> 16) & 0xFF) == 0) {
@@ -466,8 +551,7 @@ let espTool = {
       } else if (((mac1 >> 16) & 0xFF) == 1) {
         oui = [0xAC, 0xD0, 0x74];
       } else {
-        debugMsg("Couldnt determine OUI");
-        return;
+        throw("Couldnt determine OUI");
       }
 
       macAddr[0] = oui[0];
@@ -476,7 +560,14 @@ let espTool = {
       macAddr[3] = (mac1 >> 8) & 0xFF;
       macAddr[4] = mac1 & 0xFF;
       macAddr[5] = (mac0 >> 24) & 0xFF;
-    } else if (this.chipFamily == ESP32) {
+    } else if (this._chipfamily == ESP32) {
+      macAddr[0] = mac2 >> 8 & 0xFF;
+      macAddr[1] = mac2 & 0xFF;
+      macAddr[2] = mac1 >> 24 & 0xFF;
+      macAddr[3] = mac1 >> 16 & 0xFF;
+      macAddr[4] = mac1 >> 8 & 0xFF;
+      macAddr[5] = mac1 & 0xFF;
+    } else if (this._chipfamily == ESP32S2) {
       macAddr[0] = mac2 >> 8 & 0xFF;
       macAddr[1] = mac2 & 0xFF;
       macAddr[2] = mac1 >> 24 & 0xFF;
@@ -484,27 +575,28 @@ let espTool = {
       macAddr[4] = mac1 >> 8 & 0xFF;
       macAddr[5] = mac1 & 0xFF;
     } else {
-      debugMsg("Unknown chip family")
+      throw("Unknown chip family")
     }
     return macAddr;
   },
 
   /**
-   * @name readEfuses
+   * @name _readEfuses
    * Read the OTP data for this chip and store into this.efuses array
    */
-  readEfuses: function() {
+  _readEfuses: async function() {
     let baseAddr
-    if (this.chipFamily == ESP8266) {
+    if (this._chipfamily == ESP8266) {
       baseAddr = 0x3FF00050;
-    } else if (this.chipFamily == ESP32) {
+    } else if (this._chipfamily == ESP32) {
+      baseAddr = 0x6001A000;
+    } else if (this._chipfamily == ESP32S2) {
       baseAddr = 0x6001A000;
     } else {
-      logMsg("Don't know what chip this is");
-      return;
+      throw("Don't know what chip this is");
     }
     for (let i = 0; i < 4; i++) {
-      this.efuses[i] = this.readRegister(baseAddr + 4 * i);
+      this._efuses[i] = await this.readRegister(baseAddr + 4 * i);
     }
   },
 
@@ -512,10 +604,12 @@ let espTool = {
    * @name readRegister
    * Read a register within the ESP chip RAM, returns a 4-element list
    */
-  readRegister: function(reg) {
-    debugMsg("Reading Register");
+  readRegister: async function(reg) {
+    if (this.debug) {
+      debugMsg("Reading Register", reg);
+    }
     let packet = this.pack("I", reg);
-    let register = this.checkCommand(ESP_READ_REG, packet)[0];
+    let register = (await this.checkCommand(ESP_READ_REG, packet))[0];
     return this.unpack("I", register)[0];
   },
 
@@ -523,19 +617,44 @@ let espTool = {
    * @name chipType
    * ESP32 or ESP8266 based on which chip type we're talking to
    */
-  chipType: function() {
-    debugMsg("Checking Chip type");
-    if (this.chipFamily === null) {
-      let datareg = this.readRegister(0x60000078);
+  chipType: async function() {
+    if (this._chipfamily === null) {
+      let datareg = await this.readRegister(0x60000078);
       if (datareg == ESP32_DATAREGVALUE) {
-        this.chipFamily = ESP32
+        this._chipfamily = ESP32;
       } else if (datareg == ESP8266_DATAREGVALUE) {
-        this.chipFamily = ESP8266
+        this._chipfamily = ESP8266;
+      } else if (datareg == ESP32S2_DATAREGVALUE) {
+        this._chipfamily = ESP32S2;
       } else {
-        logMsg("Unknown Chip. Datareg is " + toHex(datareg));
+        throw("Unknown Chip.");
       }
     }
-    return this.chipFamily;
+    return this._chipfamily;
+  },
+
+  /**
+   * @name chipType
+   * The specific name of the chip, e.g. ESP8266EX, to the best
+   * of our ability to determine without a stub bootloader.
+   */
+  chipName: async function() {
+    await this.chipType();
+    await this._readEfuses();
+
+    if (await this.chipType() == ESP32) {
+      return "ESP32";
+    }
+    if (await this.chipType() == ESP32S2) {
+      return "ESP32-S2";
+    }
+    if (await this.chipType() == ESP8266) {
+      if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
+        return "ESP8285";
+      }
+      return "ESP8266EX";
+    }
+    return null;
   },
 
   /**
@@ -544,36 +663,52 @@ let espTool = {
    * return a tuple with the value and data.
    * See the ESP Serial Protocol for more details on what value/data are
    */
-  checkCommand: function(opcode, buffer, checksum=0, timeout=DEFAULT_TIMEOUT) {
-    debugMsg("Running Check Command");
-    this.sendCommand(opcode, buffer);
-    debugMsg("Running Get Response");
-    let [value, data] = this.getResponse(opcode, timeout);
-    console.log(value);
-    console.log(data);
+  checkCommand: async function(opcode, buffer, checksum=0, timeout=DEFAULT_TIMEOUT) {
+    timeout = Math.min(timeout, MAX_TIMEOUT);
+    await this.sendCommand(opcode, buffer);
+    let [value, data] = await this.getResponse(opcode, timeout);
     let status_len;
-    if (this.chipFamily == ESP8266) {
-        status_len = 2;
-    } else if (this.chipFamily == ESP32) {
-        status_len = 4;
-    } else {
-        if ([2, 4].includes(data.length)) {
-            status_len = data.length;
-        }
+    if (data !== null) {
+      if (this._chipfamily == ESP8266) {
+          status_len = 2;
+      } else if (this._chipfamily == ESP32) {
+          status_len = 4;
+      } else {
+          if ([2, 4].includes(data.length)) {
+              status_len = data.length;
+          }
+      }
     }
     if (data === null || data.length < status_len) {
-      debugMsg("Didn't get enough status bytes");
-      return;
+      throw("Didn't get enough status bytes");
     }
-    status = data.slice(-status_len);
+    let status = data.slice(-status_len, data.length);
     data = data.slice(0, -status_len);
-    debugMsg("status", status);
-    debugMsg("value", value);
-    debugMsg("data", data);
-    if (status[0] != 0) {
-      logMsg("Command failure error code " + toHex(status[1]))
+    if (this.debug) {
+      debugMsg("status", status);
+      debugMsg("value", value);
+      debugMsg("data", data);
+    }
+    if (status[0] == 1) {
+      if (status[1] == ROM_INVALID_RECV_MSG) {
+        throw("Invalid (unsupported) command " + toHex(opcode));
+      } else {
+        throw("Command failure error code " + toHex(status[1]));
+      }
     }
     return [value, data];
+  },
+
+  /**
+   * @name timeoutPerMb
+   * Scales timeouts which are size-specific
+   */
+  timeoutPerMb: function(secondsPerMb, sizeBytes) {
+      let result = Math.floor(secondsPerMb * (sizeBytes / 0x1e6));
+      if (result < DEFAULT_TIMEOUT) {
+        return DEFAULT_TIMEOUT;
+      }
+      return result;
   },
 
   /**
@@ -581,14 +716,13 @@ let espTool = {
    * Send a slip-encoded, checksummed command over the UART,
    * does not check response
    */
-  sendCommand: function(opcode, buffer) {
-    debugMsg("Running Send Command");
+  sendCommand: async function(opcode, buffer) {
+    //debugMsg("Running Send Command");
     inputBuffer = []; // Reset input buffer
     let checksum = 0;
     if (opcode == 0x03) {
       checksum = this.checksum(buffer.slice(16));
     }
-
     let packet = [0xC0, 0x00];  // direction
     packet.push(opcode);
     packet = packet.concat(this.pack("H", buffer.length));
@@ -598,7 +732,7 @@ let espTool = {
     if (this.debug) {
       debugMsg("Writing " + packet.length + " byte" + (packet.length == 1 ? "" : "s") + ":", packet);
     }
-    writeToStream(packet)
+    await writeToStream(packet);
   },
 
   /**
@@ -607,14 +741,12 @@ let espTool = {
    * out the value/data and returns as a tuple of (value, data) where
    * each is a list of bytes
    */
-  getResponse: function (opcode, timeout=DEFAULT_TIMEOUT) {
-    let reply = []
-
+  getResponse: async function (opcode, timeout=DEFAULT_TIMEOUT) {
+    let reply = [];
     let packet_length = 0;
     let escaped_byte = false;
     let timedOut = false;
-    let stamp = Date.now()
-     
+    let stamp = Date.now();
     while (Date.now() - stamp < timeout) {
       if (inputBuffer.length > 0) {
         let c = inputBuffer.shift();
@@ -632,6 +764,8 @@ let espTool = {
         } else {
           reply.push(c);
         }
+      } else {
+        await sleep(10);
       }
       if (reply.length > 0 && reply[0] != 0xC0) {
         // packets must start with 0xC0
@@ -648,19 +782,17 @@ let espTool = {
         packet_length = reply[3] + (reply[4] << 8);
       }
       if (reply.length == packet_length + 10) {
-          break;
+        break;
       }
     }
 
     // Check to see if we have a complete packet. If not, we timed out.
     if (reply.length != packet_length + 10) {
-      if (this.debug) {
-        debugMsg("Timed out after " + timeout + " milliseconds");
-      }
+      logMsg("Timed out after " + timeout + " milliseconds");
       return [null, null];
     }
     if (this.debug) {
-        debugMsg("Reading" + reply.length + " byte" + (reply.length == 1 ? "" : "s") + ":", reply);
+      debugMsg("Reading " + reply.length + " byte" + (reply.length == 1 ? "" : "s") + ":", reply);
     }
     let value = reply.slice(5, 9);
     let data = reply.slice(9, -1);
@@ -681,30 +813,57 @@ let espTool = {
     return state;
   },
 
+  setBaudrate: async function (baud) {
+    if (this._chipfamily == ESP8266) {
+      logMsg("Baud rate can only change on ESP32 and ESP32-S2");
+    }
+    let buffer = this.pack("<II", baud, 0);
+    await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+    port.baudRate = baud;
+    await sleep(50);
+    await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+    debugMsg("Changed baud rate to " + port.baudRate);
+  },
+
   pack: function(...args) {
     let format = args[0];
+    let pointer = 0;
     let data = args.slice(1);
-    if (format.length != data.length) {
-      debugMsg("Format to Argument count mismatch");
+    if (format.replace(/[<>]/, '').length != data.length) {
+      errorMsg("Pack format to Argument count mismatch");
       return;
     }
     let bytes = [];
-    for (let i = 0; i < data.length; i++) {
-      if (format[i] == "B") {
-        bytes.push((data[i] & 0xFF));
+    let littleEndian = true;
+    for (let i = 0; i < format.length; i++) {
+      if (format[i] == "<") {
+        littleEndian = true;
+      } else if (format[i] == ">") {
+        littleEndian = false;
+      } else if (format[i] == "B") {
+        pushBytes(data[pointer], 1);
+        pointer++;
       } else if (format[i] == "H") {
-        bytes.push((data[i] & 0xFF));
-        bytes.push((data[i] >> 8) & 0xFF);
+        pushBytes(data[pointer], 2);
+        pointer++;
       } else if (format[i] == "I") {
-        bytes.push((data[i] & 0xFF));
-        bytes.push((data[i] >> 8) & 0xFF);
-        bytes.push((data[i] >> 16) & 0xFF);
-        bytes.push((data[i] >> 24) & 0xFF);
+        pushBytes(data[pointer], 4);
+        pointer++;
       } else {
-        debugMsg("Unhandled character in format");
-      }  
+        errorMsg("Unhandled character in pack format");
+      }
     }
-    
+
+    function pushBytes(value, byteCount) {
+      for (let i = 0; i < byteCount; i++) {
+        if (littleEndian) {
+          bytes.push((value >> (i * 8)) & 0xFF);
+        } else {
+          bytes.push((value >> ((byteCount - i) * 8)) & 0xFF);
+        }
+      }
+    }
+
     return bytes;
   },
 
@@ -717,19 +876,19 @@ let espTool = {
         pointer += 1;
       } else if (c == "H") {
         data.push(
-          (bytes[pointer] & 0xFF) | 
+          (bytes[pointer] & 0xFF) |
           ((bytes[pointer + 1] & 0xFF) << 8)
         );
         pointer += 2;
       } else if (c == "I") {
         data.push(
-          (bytes[pointer] & 0xFF) | 
+          (bytes[pointer] & 0xFF) |
           ((bytes[pointer + 1] & 0xFF) << 8) |
           ((bytes[pointer + 2] & 0xFF) << 16) |
           ((bytes[pointer + 3] & 0xFF) << 24))
         pointer += 4;
       } else {
-        debugMsg("Unhandled character in format");
+        errorMsg("Unhandled character in unpack format");
       }
     }
     return data;
@@ -741,17 +900,16 @@ let espTool = {
    * ESP ROM bootloader, we will retry a few times
    */
   sync: async function() {
-    //this.reset(true)
-
     for (let i = 0; i < 5; i++) {
-      if (this._sync()) {
+      let response = await this._sync();
+      if (response) {
         await sleep(100);
         return true;
       }
       await sleep(100);
     }
 
-    logMsg("Couldn't sync to ESP");
+    throw("Couldn't sync to ESP. Try resetting.");
   },
 
   /**
@@ -759,18 +917,170 @@ let espTool = {
    * Perform a soft-sync using AT sync packets, does not perform
    * any hardware resetting
    */
-  _sync: function() {
-    debugMsg("Sending sync packet");
-    this.sendCommand(ESP_SYNC, SYNC_PACKET);
+  _sync: async function() {
+    await this.sendCommand(ESP_SYNC, SYNC_PACKET);
     for (let i = 0; i < 8; i++) {
-      let [reply, data] = this.getResponse(ESP_SYNC, SYNC_TIMEOUT)
-      if (!data) {
+      let [reply, data] = await this.getResponse(ESP_SYNC, SYNC_TIMEOUT);
+      if (data === null) {
         continue;
       }
-      if (!data.length > 1 && data[0] == 0 && data[1] == 0) {
+      if (data.length > 1 && data[0] == 0 && data[1] == 0) {
         return true;
       }
     }
     return false;
+  },
+
+  /**
+   * @name getFlashWriteSize
+   * Get the Flash write size based on the chip
+   */
+  getFlashWriteSize: function() {
+    if (this._chipfamily == ESP32S2) {
+      return ESP32S2_FLASH_WRITE_SIZE;
+    }
+    return FLASH_WRITE_SIZE;
+  },
+
+  /**
+   * @name flashData
+   * Program a full, uncompressed binary file into SPI Flash at
+   *   a given offset. If an ESP32 and md5 string is passed in, will also
+   *   verify memory. ESP8266 does not have checksum memory verification in
+   *   ROM
+   */
+  flashData: async function(binaryData, offset=0) {
+
+    let filesize = binaryData.byteLength;
+    logMsg("\nWriting data with filesize:" + filesize);
+    let blocks = await this.flashBegin(filesize, offset);
+    let block = [];
+    let seq = 0;
+    let written = 0;
+    let address = offset;
+    let position = offset;
+    let stamp = Date.now();
+    let flashWriteSize = this.getFlashWriteSize();
+
+    while (filesize - position > 0) {
+      logMsg(
+          "Writing at " + toHex(address + seq * flashWriteSize, 8) + "... (" + Math.floor(100 * (seq + 1) / blocks)+ " %)"
+      );
+      if (filesize - position >= flashWriteSize) {
+        block = Array.from(new Uint8Array(binaryData, position, flashWriteSize));
+      } else {
+        // Pad the last block
+        block = Array.from(new Uint8Array(binaryData, position, filesize - position));
+        block = block.concat(new Array(flashWriteSize - block.length).fill(0xFF));
+      }
+      await this.flashBlock(block, seq, 2000);
+      seq += 1;
+      written += block.length;
+      position += flashWriteSize;
+    }
+    logMsg("Took " + (Date.now() - stamp) + "ms to write " + filesize + " bytes");
+    logMsg("To run the new firmware, please reset your device.")
+  },
+
+  /**
+   * @name flashBlock
+   * Send one block of data to program into SPI Flash memory
+   */
+  flashBlock: async function(data, seq, timeout=100) {
+    await this.checkCommand(
+      ESP_FLASH_DATA,
+      this.pack("<IIII", data.length, seq, 0, 0).concat(data),
+      this.checksum(data),
+      timeout,
+    );
+  },
+
+  /**
+   * @name flashBegin
+   * Prepare for flashing by attaching SPI chip and erasing the
+   *   number of blocks requred.
+   */
+  flashBegin: async function(size=0, offset=0, encrypted=false) {
+    let eraseSize;
+    let buffer;
+    let flashWriteSize = this.getFlashWriteSize();
+    if ([ESP32, ESP32S2].includes(this._chipfamily)) {
+      await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
+    }
+    if (this._chipfamily == ESP32) {
+      // We are hardcoded for 4MB flash on ESP32
+      buffer = this.pack(
+          "<IIIIII", 0, this._flashsize, 0x10000, 4096, 256, 0xFFFF
+      )
+      await this.checkCommand(ESP_SPI_SET_PARAMS, buffer);
+    }
+    let numBlocks = Math.floor((size + flashWriteSize - 1) / flashWriteSize);
+    if (this._chipfamily == ESP8266) {
+      eraseSize = this.getEraseSize(offset, size);
+    } else {
+      eraseSize = size;
+    }
+
+    let timeout = this.timeoutPerMb(ERASE_REGION_TIMEOUT_PER_MB, size);
+
+    let stamp = Date.now();
+    buffer = this.pack(
+        "<IIII", eraseSize, numBlocks, flashWriteSize, offset
+    );
+    if (this._chipfamily == ESP32S2) {
+      buffer = buffer.concat(this.pack(
+        "<I", encrypted ? 1 : 0
+      ));
+    }
+    logMsg(
+        "Erase size " + eraseSize + ", blocks " + numBlocks + ", block size " + flashWriteSize + ", offset " + toHex(offset, 4) + ", encrypted " + (encrypted ? "yes" : "no")
+    );
+    await this.checkCommand(ESP_FLASH_BEGIN, buffer, 0, timeout);
+    if (size != 0) {
+      logMsg("Took " + (Date.now() - stamp) + "ms to erase " + numBlocks + " bytes");
+    }
+    return numBlocks;
+  },
+
+  flashFinish: async function() {
+    let buffer = this.pack('<I', 1);
+    await this.checkCommand(ESP_FLASH_END, buffer);
+  },
+
+  /**
+   * @name getEraseSize
+   * Calculate an erase size given a specific size in bytes.
+   *   Provides a workaround for the bootloader erase bug on ESP8266.
+   */
+  getEraseSize: function(offset, size) {
+    let sectorsPerBlock = 16;
+    let sectorSize = FLASH_SECTOR_SIZE;
+    let numSectors = Math.floor((size + sectorSize - 1) / sectorSize);
+    let startSector = Math.floor(offset / sectorSize);
+
+    let headSectors = sectorsPerBlock - (startSector % sectorsPerBlock);
+    if (numSectors < headSectors) {
+      headSectors = numSectors;
+    }
+
+    if (numSectors < 2 * headSectors) {
+      return Math.floor((numSectors + 1) / 2 * sectorSize);
+    }
+
+    return (numSectors - headSectors) * sectorSize;
+  },
+
+  /**
+   * @name getEraseSize
+   * depending on flash chip model the erase may take this long (maybe longer!)
+   */
+  eraseFlash: async function() {
+    const chunks = 8;
+    let chunkSize = Math.floor(this._flashsize / chunks);
+    for (let i = 0; i < chunks; i++) {
+      await this.flashBegin(chunkSize, i * chunkSize);
+      await sleep(100);
+      //await this.flashFinish();
+    }
   }
 }
