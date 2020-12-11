@@ -34,7 +34,7 @@
   color: #000;
 }
 
-button, #firmware + label {
+button, .firmware {
   height: 25px;
   font-size: 16px;
   border-radius: 15px;
@@ -110,11 +110,11 @@ div.clear {
 }
 
 #app.connected #commands {
-  height: 80px;
+  height: 200px;
 }
 
 #app.connected #log {
-  height: calc(100vh - 410px);
+  height: calc(100vh - 530px);
 }
 
 #app #commands {
@@ -287,13 +287,29 @@ div.clear {
 }
 
 #commands {
-  display: flex;
+  min-width: 600px;
   justify-content: center;
   position: relative;
   align-items: center;
 }
 
-#firmware {
+#commands .upload {
+  width: 600px;
+  display: flex;
+  align-items: center;
+  margin: 5px auto;
+  justify-content: center;
+}
+
+#commands .upload .offset {
+  width: 50px;
+}
+
+#commands .upload label {
+  white-space: nowrap;
+}
+
+.firmware > input {
 	width: 0.1px;
 	height: 0.1px;
 	opacity: 0;
@@ -302,16 +318,17 @@ div.clear {
 	z-index: -1;
 }
 
-#firmware + label {
+.firmware {
   border-style: solid;
   margin-left: 20px;
-  display:flex;
+  margin-right: 20px;
+  display: flex;
   align-items: center;
-  cursor: pointer; /* "hand" cursor */
+  cursor: pointer;
 }
 
-#firmware + label span {
-  margin-left: 10px;
+.firmware > svg {
+  margin-right: 10px;
 }
 
 .debug-function {
@@ -324,4 +341,35 @@ div.clear {
 
 .timestamp {
   color: #8ec641;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 24px;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #333;
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.progress-bar > div {
+  height: 24px;
+  background-color: #71ae1e;
+  width: 0;
+}
+
+#commands .buttons {
+  display: flex;
+  justify-content: center;
+  width: 600px;
+  margin: 10px auto;
+}
+
+#commands .buttons button {
+  margin-left: 10px;
+  margin-right: 10px;
+  border-width: 2px;
+  border-style: solid;
 }

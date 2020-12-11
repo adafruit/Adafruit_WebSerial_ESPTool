@@ -33,32 +33,55 @@ input, select, button {
   background-color: #fff;
 }
 
+
+#commands button {
+  border-color: #fff;
+  background-color: #333;
+  color: #fff;
+}
+
+#commands button:hover {
+  background-color: #fff;
+  color: #333;
+}
+
 #notSupported {
   background-color: red;
   color: white;
 }
 
-#firmware + label {
+.firmware {
   border-color: #fff;
   color: #fff;
 }
 
-#firmware:focus + label,
-#firmware + label:hover {
+.firmware:focus,
+.firmware:hover {
   background-color: #fff;
   color: #333;
 }
 
-#firmware:disabled + label {
+.firmware:disabled {
   color: #ccc;
   border-color: #ccc;
 }
 
-#firmware:disabled + label:hover {
+.firmware:disabled:hover {
   background-color: #fff;
 }
 
 input {
   background-color: #fff;
   color: #333;
+}
+
+#commands .buttons button:disabled,
+#commands .buttons button:disabled:hover{
+  border-color: #999;
+  background-color: #888;
+  color: #ccc;
+}
+
+#commands .buttons button:hover {
+  background-color: #fff;
 }

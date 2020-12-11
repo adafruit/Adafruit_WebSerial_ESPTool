@@ -72,18 +72,20 @@ const bufferSize = 512;
 const colors = ['#00a7e9', '#f89521', '#be1e2d'];
 const measurementPeriodId = '0001';
 
-const maxLogLength = 500;
+const maxLogLength = 100;
 const log = document.getElementById('log');
 const butConnect = document.getElementById('butConnect');
 const baudRate = document.getElementById('baudRate');
 const butClear = document.getElementById('butClear');
-const offset = document.getElementById('offset');
 const butErase = document.getElementById('butErase');
+const butProgram = document.getElementById('butProgram');
 const autoscroll = document.getElementById('autoscroll');
 const lightSS = document.getElementById('light');
 const darkSS = document.getElementById('dark');
 const darkMode = document.getElementById('darkmode');
-const firmware = document.getElementById('firmware');
+const firmware = document.querySelectorAll(".upload .firmware input");
+const progress = document.querySelectorAll(".upload .progress-bar");
+const offsets = document.querySelectorAll('.upload .offset');
 const appDiv = document.getElementById('app');
 const butRemix = document.querySelector(".remix button");
 
@@ -105,11 +107,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   butClear.addEventListener('click', clickClear);
   butErase.addEventListener('click', clickErase);
+  butProgram.addEventListener('click', clickProgram);
+  for (let i = 0; i < firmware.length; i++) {
+    firmware[i].addEventListener('change', checkFirmware);
+  }
+  for (let i = 0; i < offsets.length; i++) {
+    offsets[i].addEventListener('change', checkProgrammable);
+  }
   autoscroll.addEventListener('click', clickAutoscroll);
   baudRate.addEventListener('change', changeBaudRate);
   darkMode.addEventListener('click', clickDarkMode);
   butRemix.addEventListener('click', remix);
-  firmware.addEventListener('change', uploadFirmware);
   window.addEventListener('error', function(event) {
     console.log("Got an uncaught error: ", event.error)
   });
@@ -173,21 +181,6 @@ function toByteArray(str) {
     let charcode = str.charCodeAt(i);
     if (charcode <= 0xFF) {
       byteArray.push(charcode);
-    } else if (charcode < 0x800) {
-      byteArray.push(0xc0 | (charcode >> 6),
-                     0x80 | (charcode & 0x3f));
-    } else if (charcode < 0xd800 || charcode >= 0xe000) {
-      byteArray.push(0xe0 | (charcode >> 12),
-                     0x80 | ((charcode>>6) & 0x3f),
-                     0x80 | (charcode & 0x3f));
-    } else {
-      i++;
-      charcode = 0x10000 + (((charcode & 0x3ff) << 10)
-                | (str.charCodeAt(i) & 0x3ff));
-      byteArray.push(0xf0 | (charcode >>18),
-                     0x80 | ((charcode>>12) & 0x3f),
-                     0x80 | ((charcode>>6) & 0x3f),
-                     0x80 | (charcode & 0x3f));
     }
   }
   return byteArray;
@@ -413,14 +406,122 @@ async function clickDarkMode() {
  * Click handler for the erase button.
  */
 async function clickErase() {
-  baudRate.disabled = true;
-  try {
-    await stubLoader.eraseFlash();
-  } catch(e) {
-    errorMsg(e);
-  } finally {
-    baudRate.disabled = false;
+  if (window.confirm("This will erase the entire flash. Click OK to continue.")) {
+    baudRate.disabled = true;
+    butErase.disabled = true;
+    butProgram.disabled = true;
+    try {
+      logMsg("Erasing flash memory. Please wait...");
+      let stamp = Date.now();
+      await stubLoader.eraseFlash();
+      logMsg("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
+    } catch(e) {
+      errorMsg(e);
+    } finally {
+      butErase.disabled = false;
+      baudRate.disabled = false;
+      butProgram.disabled = getValidFiles().length == 0;
+    }
   }
+}
+
+/**
+ * @name clickProgram
+ * Click handler for the program button.
+ */
+async function clickProgram() {
+  const readUploadedFileAsArrayBuffer = (inputFile) => {
+    const reader = new FileReader();
+
+    return new Promise((resolve, reject) => {
+      reader.onerror = () => {
+        reader.abort();
+        reject(new DOMException("Problem parsing input file."));
+      };
+
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+      reader.readAsArrayBuffer(inputFile);
+    });
+  };
+
+  baudRate.disabled = true;
+  butErase.disabled = true;
+  butProgram.disabled = true;
+  for (let i=0; i< 4; i++) {
+    firmware[i].disabled = true;
+    offsets[i].disabled = true;
+  }
+  for (let file of getValidFiles()) {
+    progress[file].classList.remove("hidden");
+    let binfile = firmware[file].files[0];
+    let contents = await readUploadedFileAsArrayBuffer(binfile);
+    try {
+      let offset = parseInt(offsets[file].value, 16);
+      await stubLoader.flashData(contents, offset, file);
+      await sleep(100);
+    } catch(e) {
+      errorMsg(e);
+    }
+  }
+  for (let i=0; i< 4; i++) {
+    firmware[i].disabled = false;
+    offsets[i].disabled = false;
+    progress[i].classList.add("hidden");
+    progress[i].querySelector("div").style.width = "0";
+  }
+  butErase.disabled = false;
+  baudRate.disabled = false;
+  butProgram.disabled = getValidFiles().length == 0;
+  logMsg("To run the new firmware, please reset your device.")
+}
+
+function getValidFiles() {
+  // Get a list of file and offsets
+  // This will be used to check if we have valid stuff
+  // and will also return a list of files to program
+  let validFiles = [];
+  let offsetVals = [];
+  for (let i=0; i<4; i++) {
+    let offs = parseInt(offsets[i].value, 16);
+    if (firmware[i].files.length > 0 && !offsetVals.includes(offs)) {
+      validFiles.push(i);
+      offsetVals.push(offs);
+    }
+  }
+  return validFiles;
+}
+
+/**
+ * @name checkProgrammable
+ * Check if the conditions to program the device are sufficient
+ */
+async function checkProgrammable() {
+  butProgram.disabled = getValidFiles().length == 0;
+}
+
+/**
+ * @name checkFirmware
+ * Handler for firmware upload changes
+ */
+async function checkFirmware(event) {
+  let filename = event.target.value.split("\\" ).pop();
+  let label = event.target.parentNode.querySelector("span");
+  let icon = event.target.parentNode.querySelector("svg");
+  if (filename != "") {
+    if (filename.length > 17) {
+      label.innerHTML = filename.substring(0, 14) + "&hellip;";
+    } else {
+      label.innerHTML = filename;
+    }
+    icon.classList.add("hidden");
+  } else {
+    label.innerHTML = "Choose a file&hellip;";
+    icon.classList.remove("hidden");
+  }
+
+  await checkProgrammable();
 }
 
 /**
@@ -429,28 +530,6 @@ async function clickErase() {
  */
 async function clickClear() {
   reset();
-}
-
-async function uploadFirmware() {
-  let binfile = firmware.files[0];
-  const reader = new FileReader();
-  reader.addEventListener('load', async (event) => {
-    baudRate.disabled = true;
-    firmware.disabled = true;
-    let label	= firmware.nextElementSibling;
-    let labelVal = label.innerHTML;
-    //try {
-      label.querySelector('span').innerHTML = "Programming...";
-      await espTool.flashData(event.target.result, parseInt(offset.value, 16));
-    /*} catch(e) {
-      errorMsg(e);
-    } finally {
-      label.innerHTML = labelVal;
-      baudRate.disabled = false;
-      firmware.disabled = false;
-    }*/
-  });
-  reader.readAsArrayBuffer(binfile);
 }
 
 function convertJSON(chunk) {
@@ -464,13 +543,15 @@ function convertJSON(chunk) {
 
 function toggleUIToolbar(show) {
   isConnected = show;
+  for (let i=0; i< 4; i++) {
+    progress[i].classList.add("hidden");
+    progress[i].querySelector("div").style.width = "0";
+  }
   if (show) {
     appDiv.classList.add("connected");
   } else {
     appDiv.classList.remove("connected");
   }
-  firmware.disabled = !show;
-  offset.disabled = !show;
   butErase.disabled = !show;
 }
 
@@ -487,7 +568,7 @@ function toggleUIConnected(connected) {
 function loadAllSettings() {
   // Load all saved settings or defaults
   autoscroll.checked = loadSetting('autoscroll', true);
-  baudRate.value = loadSetting('baudrate', 115200);
+  baudRate.value = loadSetting('baudrate', 921600);
   darkMode.checked = loadSetting('darkmode', false);
 }
 
@@ -517,7 +598,7 @@ class EspLoader {
     this._chipfamily = null;
     this._efuses = new Array(4).fill(0);
     this._flashsize = 4 * 1024 * 1024;
-    this.debug = true;
+    this.debug = false;
     this.IS_STUB = false;
   }
 
@@ -673,7 +754,6 @@ class EspLoader {
    */
   async checkCommand(opcode, buffer, checksum=0, timeout=DEFAULT_TIMEOUT) {
     timeout = Math.min(timeout, MAX_TIMEOUT);
-    debugMsg("Pre-encoded data", buffer);
     await this.sendCommand(opcode, buffer, checksum);
     let [value, data] = await this.getResponse(opcode, timeout);
     let statusLen;
@@ -1011,7 +1091,7 @@ class EspLoader {
    *   verify memory. ESP8266 does not have checksum memory verification in
    *   ROM
    */
-  async flashData(binaryData, offset=0) {
+  async flashData(binaryData, offset=0, part=0) {
 
     let filesize = binaryData.byteLength;
     logMsg("\nWriting data with filesize:" + filesize);
@@ -1020,14 +1100,17 @@ class EspLoader {
     let seq = 0;
     let written = 0;
     let address = offset;
-    let position = offset;
+    let position = 0;
     let stamp = Date.now();
     let flashWriteSize = this.getFlashWriteSize();
+    let progressBar = progress[part].querySelector("div");
 
     while (filesize - position > 0) {
-      logMsg(
-          "Writing at " + toHex(address + seq * flashWriteSize, 8) + "... (" + Math.floor(100 * (seq + 1) / blocks)+ " %)"
-      );
+      let percentage = Math.floor(100 * (seq + 1) / blocks);
+      /*logMsg(
+          "Writing at " + toHex(address + seq * flashWriteSize, 8) + "... (" + percentage + " %)"
+      );*/
+      progressBar.style.width = percentage + "%";
       if (filesize - position >= flashWriteSize) {
         block = Array.from(new Uint8Array(binaryData, position, flashWriteSize));
       } else {
@@ -1041,7 +1124,6 @@ class EspLoader {
       position += flashWriteSize;
     }
     logMsg("Took " + (Date.now() - stamp) + "ms to write " + filesize + " bytes");
-    logMsg("To run the new firmware, please reset your device.")
   };
 
   /**
@@ -1253,7 +1335,7 @@ class EspLoader {
     if (p != 'OHAI') {
       throw "Failed to start stub. Unexpected response: " + p;
     }
-    logMsg("Stub running...");
+    logMsg("Stub is now running...");
     return new EspStubLoader();
   }
 }

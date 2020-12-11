@@ -38,22 +38,38 @@ input, select, button {
   background-color: #333;
 }
 
-#firmware + label {
+.firmware {
   border-color: #63338f;
   color: #63338f;
 }
 
-#firmware:focus + label,
-#firmware + label:hover {
+.firmware:focus,
+.firmware:hover {
   background-color: #63338f;
   color: #fff;
 }
 
-#firmware:disabled + label {
-  color: #ccc;
-  border-color: #ccc;
+.firmware:disabled {
+  background-color: #ddd;
+  color: #888;
 }
 
-#firmware:disabled + label:hover {
-  background-color: #fff;
+.firmware:disabled:hover {
+  background-color: #ddd;
+}
+
+#commands .buttons button {
+  border-color: #333;
+}
+
+#commands .buttons button:disabled,
+#commands .buttons button:disabled:hover {
+  border-color: #ccc;
+  background-color: #ddd;
+  color: #888;
+}
+
+#commands .buttons button:hover {
+  background-color: #333;
+  color: #fff;
 }
