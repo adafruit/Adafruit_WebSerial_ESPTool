@@ -99,11 +99,11 @@ let inputBuffer = [];
 document.addEventListener('DOMContentLoaded', () => {
   espTool = new EspLoader()
   butConnect.addEventListener('click', () => {
-    clickConnect();/*.catch(async (e) => {
+    clickConnect().catch(async (e) => {
       errorMsg(e.message);
       disconnect();
       toggleUIConnected(false);
-    });*/
+    });
   });
   butClear.addEventListener('click', clickClear);
   butErase.addEventListener('click', clickErase);
@@ -350,7 +350,7 @@ async function clickConnect() {
   await connect();
 
   toggleUIConnected(true);
-  //try {
+  try {
     if (await espTool.sync()) {
       toggleUIToolbar(true);
       appDiv.classList.add("connected");
@@ -362,12 +362,12 @@ async function clickConnect() {
       logMsg("MAC Address: " + formatMacAddr(espTool.macAddr()));
       stubLoader = await espTool.runStub();
     }
-  /*} catch(e) {
+  } catch(e) {
     errorMsg(e);
     await disconnect();
     toggleUIConnected(false);
     return;
-  }*/
+  }
 }
 
 /**
