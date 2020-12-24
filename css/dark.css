@@ -85,3 +85,7 @@ input {
 #commands .buttons button:hover {
   background-color: #fff;
 }
+
+.progress-bar {
+  border-color: #aaa;
+}

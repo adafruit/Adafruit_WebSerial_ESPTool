@@ -73,3 +73,7 @@ input, select, button {
   background-color: #333;
   color: #fff;
 }
+
+.progress-bar {
+  border-color: #333;
+}
