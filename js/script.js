@@ -132,6 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
   logMsg("Adafruit WebSerial ESPTool loaded.");
 });
 
+function getChromeVersion() {
+    let raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
+
+    return raw ? parseInt(raw[2], 10) : false;
+}
+
 function remix() {
   let projectUrl = window.location.href.replace('.glitch.me/', '').replace('://', '://glitch.com/edit/#!/remix/');
   window.location.href = projectUrl;
@@ -148,7 +154,11 @@ async function connect() {
 
   logMsg("Connecting...")
   // - Wait for the port to open.toggleUIConnected
-  await port.open({ baudRate: ESP_ROM_BAUD });
+  if (getChromeVersion() < 86) {
+    await port.open({ baudrate: ESP_ROM_BAUD });
+  } else {
+    await port.open({ baudRate: ESP_ROM_BAUD });
+  }
 
   const signals = await port.getSignals();
 
@@ -961,10 +971,14 @@ class EspLoader {
     }
     let buffer = this.pack("<II", baud, 0);
     await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
-    port.baudRate = baud;
+    if (getChromeVersion() < 86) {
+      port.baudrate = baud;
+    } else {
+      port.baudRate = baud;
+    }
     await sleep(50);
     await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
-    logMsg("Changed baud rate to " + port.baudRate);
+    logMsg("Changed baud rate to " + baud);
   };
 
   pack(...args) {
