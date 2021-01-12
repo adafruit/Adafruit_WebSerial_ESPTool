@@ -87,7 +87,6 @@ const firmware = document.querySelectorAll(".upload .firmware input");
 const progress = document.querySelectorAll(".upload .progress-bar");
 const offsets = document.querySelectorAll('.upload .offset');
 const appDiv = document.getElementById('app');
-const butRemix = document.querySelector(".remix button");
 
 let colorIndex = 0;
 let activePanels = [];
@@ -117,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
   autoscroll.addEventListener('click', clickAutoscroll);
   baudRate.addEventListener('change', changeBaudRate);
   darkMode.addEventListener('click', clickDarkMode);
-  butRemix.addEventListener('click', remix);
   window.addEventListener('error', function(event) {
     console.log("Got an uncaught error: ", event.error)
   });
@@ -136,11 +134,6 @@ function getChromeVersion() {
     let raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
 
     return raw ? parseInt(raw[2], 10) : false;
-}
-
-function remix() {
-  let projectUrl = window.location.href.replace('.glitch.me/', '').replace('://', '://glitch.com/edit/#!/remix/');
-  window.location.href = projectUrl;
 }
 
 /**
