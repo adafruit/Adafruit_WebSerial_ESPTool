@@ -961,17 +961,19 @@ class EspLoader {
   async setBaudrate(baud) {
     if (this._chipfamily == ESP8266) {
       logMsg("Baud rate can only change on ESP32 and ESP32-S2");
-    }
-    let buffer = this.pack("<II", baud, 0);
-    await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
-    if (getChromeVersion() < 86) {
-      port.baudrate = baud;
     } else {
-      port.baudRate = baud;
+      logMsg("Attempting to change baud rate to " + baud + "...");
+      let buffer = this.pack("<II", baud, 0);
+      await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+      if (getChromeVersion() < 86) {
+        port.baudrate = baud;
+      } else {
+        port.baudRate = baud;
+      }
+      await sleep(50);
+      await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+      logMsg("Changed baud rate to " + baud);
     }
-    await sleep(50);
-    await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
-    logMsg("Changed baud rate to " + baud);
   };
 
   pack(...args) {
