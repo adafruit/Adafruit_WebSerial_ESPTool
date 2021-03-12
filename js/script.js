@@ -962,6 +962,7 @@ class EspLoader {
     if (this._chipfamily == ESP8266) {
       logMsg("Baud rate can only change on ESP32 and ESP32-S2");
     }
+    logMsg("Attempting to change baud rate to " + baud + "...");
     let buffer = this.pack("<II", baud, 0);
     await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
     if (getChromeVersion() < 86) {
