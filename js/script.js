@@ -156,6 +156,11 @@ async function connect() {
   const signals = await port.getSignals();
 
   logMsg("Connected successfully.")
+    
+  logMsg("Try to reset.")
+  await port.setSignals({ dataTerminalReady: false, requestToSend: true });  
+  await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   outputStream = port.writable;
   inputStream = port.readable;
