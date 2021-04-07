@@ -156,9 +156,9 @@ async function connect() {
   const signals = await port.getSignals();
 
   logMsg("Connected successfully.")
-    
+
   logMsg("Try to reset.")
-  await port.setSignals({ dataTerminalReady: false, requestToSend: true });  
+  await port.setSignals({ dataTerminalReady: false, requestToSend: true });
   await port.setSignals({ dataTerminalReady: true, requestToSend: false });
   await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -968,16 +968,20 @@ class EspLoader {
       logMsg("Baud rate can only change on ESP32 and ESP32-S2");
     } else {
       logMsg("Attempting to change baud rate to " + baud + "...");
-      let buffer = this.pack("<II", baud, 0);
-      await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
-      if (getChromeVersion() < 86) {
-        port.baudrate = baud;
-      } else {
-        port.baudRate = baud;
+      try {
+        let buffer = this.pack("<II", baud, 0);
+        await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+        if (getChromeVersion() < 86) {
+          port.baudrate = baud;
+        } else {
+          port.baudRate = baud;
+        }
+        await sleep(50);
+        await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+        logMsg("Changed baud rate to " + baud);
+      } catch (e) {
+        throw("Unable to change the baud rate, please try setting the connection speed from " + baud + " to 115200 and reconnecting.");
       }
-      await sleep(50);
-      await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
-      logMsg("Changed baud rate to " + baud);
     }
   };
 
