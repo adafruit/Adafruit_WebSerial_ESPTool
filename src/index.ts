@@ -1,0 +1,21 @@
+import { ESP_ROM_BAUD, Logger } from "./const";
+import { ESPLoader } from "./esp_loader";
+import { formatMacAddr } from "./util";
+
+export const connect = async (logger: Logger) => {
+  // - Request a port and open a connection.
+  const port = await navigator.serial.requestPort();
+
+  logger.log("Connecting...");
+  await port.open({ baudRate: ESP_ROM_BAUD });
+
+  logger.log("Connected successfully.");
+
+  const esploader = new ESPLoader(port, logger);
+  await esploader.initialize();
+
+  logger.log("Connected to " + esploader.chipName);
+  logger.log("MAC Address: " + formatMacAddr(esploader.macAddr()));
+
+  return esploader;
+};
