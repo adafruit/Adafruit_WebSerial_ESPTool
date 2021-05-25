@@ -522,7 +522,7 @@ export class ESPLoader extends EventTarget {
    */
   async flashData(
     binaryData: ArrayBuffer,
-    updateProgress: (percentage: number) => void,
+    updateProgress: (bytesWritten: number) => void,
     offset = 0
   ) {
     let filesize = binaryData.byteLength;
@@ -530,18 +530,16 @@ export class ESPLoader extends EventTarget {
     let blocks = await this.flashBegin(filesize, offset);
     let block = [];
     let seq = 0;
-    // let written = 0;
+    let written = 0;
     // let address = offset;
     let position = 0;
     let stamp = Date.now();
     let flashWriteSize = this.getFlashWriteSize();
 
     while (filesize - position > 0) {
-      let percentage = Math.floor((100 * (seq + 1)) / blocks);
       /*logMsg(
           "Writing at " + toHex(address + seq * flashWriteSize, 8) + "... (" + percentage + " %)"
       );*/
-      updateProgress(percentage);
       if (filesize - position >= flashWriteSize) {
         block = Array.from(
           new Uint8Array(binaryData, position, flashWriteSize)
@@ -557,8 +555,9 @@ export class ESPLoader extends EventTarget {
       }
       await this.flashBlock(block, seq, 2000);
       seq += 1;
-      // written += block.length;
+      written += block.length;
       position += flashWriteSize;
+      updateProgress(written);
     }
     this.logger.log(
       "Took " + (Date.now() - stamp) + "ms to write " + filesize + " bytes"
