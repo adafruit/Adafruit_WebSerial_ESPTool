@@ -523,8 +523,7 @@ export class ESPLoader extends EventTarget {
   async flashData(
     binaryData: ArrayBuffer,
     updateProgress: (percentage: number) => void,
-    offset = 0,
-    part = 0
+    offset = 0
   ) {
     let filesize = binaryData.byteLength;
     this.logger.log("\nWriting data with filesize:" + filesize);

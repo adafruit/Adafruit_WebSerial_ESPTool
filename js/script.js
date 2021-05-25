@@ -286,8 +286,7 @@ async function clickProgram() {
         (percentage) => {
           progressBar.style.width = percentage + "%";
         },
-        offset,
-        file
+        offset
       );
       await sleep(100);
     } catch (e) {
