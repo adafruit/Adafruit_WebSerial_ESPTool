@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   butConnect.addEventListener("click", () => {
     clickConnect().catch(async (e) => {
       console.error(e);
-      errorMsg(e.message);
+      errorMsg(e.message || e);
       if (espStub) {
         await espStub.disconnect();
       }
@@ -161,6 +161,12 @@ function enableStyleSheet(node, enabled) {
   node.disabled = !enabled;
 }
 
+function formatMacAddr(macAddr) {
+  return macAddr
+    .map((value) => value.toString(16).toUpperCase().padStart(2, "0"))
+    .join(":");
+}
+
 /**
  * @name clickConnect
  * Click handler for the connect/disconnect button.
@@ -180,13 +186,23 @@ async function clickConnect() {
     debug: (...args) => debugMsg(...args),
     error: (...args) => errorMsg(...args),
   });
-  espStub = await esploader.runStub();
-  toggleUIConnected(true);
-  toggleUIToolbar(true);
-  espStub.addEventListener("disconnect", () => {
-    toggleUIConnected(false);
-    espStub = false;
-  });
+  try {
+    await esploader.initialize();
+
+    logMsg("Connected to " + esploader.chipName);
+    logMsg("MAC Address: " + formatMacAddr(esploader.macAddr()));
+
+    espStub = await esploader.runStub();
+    toggleUIConnected(true);
+    toggleUIToolbar(true);
+    espStub.addEventListener("disconnect", () => {
+      toggleUIConnected(false);
+      espStub = false;
+    });
+  } catch (err) {
+    await esploader.disconnect();
+    throw err;
+  }
 }
 
 /**

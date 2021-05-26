@@ -105,8 +105,3 @@ export const toHex = (value: number, size = 2) => {
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
-
-export const formatMacAddr = (macAddr: number[]) =>
-  macAddr
-    .map((value) => value.toString(16).toUpperCase().padStart(2, "0"))
-    .join(":");

@@ -528,7 +528,7 @@ export class ESPLoader extends EventTarget {
   ) {
     let filesize = binaryData.byteLength;
     this.logger.log("\nWriting data with filesize:" + filesize);
-    let blocks = await this.flashBegin(filesize, offset);
+    await this.flashBegin(filesize, offset);
     let block = [];
     let seq = 0;
     let written = 0;
