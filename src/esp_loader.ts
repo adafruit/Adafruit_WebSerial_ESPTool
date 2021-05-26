@@ -111,8 +111,9 @@ export class ESPLoader extends EventTarget {
     if (this.chipFamily == CHIP_FAMILY_ESP8266) {
       if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
         this.chipName = "ESP8285";
+      } else {
+        this.chipName = "ESP8266EX";
       }
-      this.chipName = "ESP8266EX";
     }
   }
 
