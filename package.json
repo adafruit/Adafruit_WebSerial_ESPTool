@@ -1,6 +1,6 @@
 {
   "name": "esp-web-flasher",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Flash ESP devices using WebSerial",
   "main": "dist/index.js",
   "repository": "https://github.com/nabucasa/ESP-Web-flasher",
