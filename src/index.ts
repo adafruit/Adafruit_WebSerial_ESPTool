@@ -1,6 +1,9 @@
 import { ESP_ROM_BAUD, Logger } from "./const";
 import { ESPLoader } from "./esp_loader";
 
+export type { Logger } from "./const";
+export { ESPLoader } from "./esp_loader";
+
 export {
   CHIP_FAMILY_ESP32,
   CHIP_FAMILY_ESP32S2,
