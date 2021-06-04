@@ -1,10 +1,10 @@
 {
-  "name": "adafruit-webserial-esptool",
+  "name": "esp-web-flasher",
   "version": "1.0.0",
-  "description": "Browser-based ESPTool using WebSerial",
+  "description": "Flash ESP devices using WebSerial",
   "main": "dist/index.js",
-  "repository": "https://github.com/adafruit/Adafruit_WebSerial_ESPTool",
-  "author": "Adafruit",
+  "repository": "https://github.com/nabucasa/ESP-Web-flasher",
+  "author": "Nabu Casa",
   "license": "MIT",
   "scripts": {
     "prepublishOnly": "script/build"

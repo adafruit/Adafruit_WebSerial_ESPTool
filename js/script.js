@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initBaudRate();
   loadAllSettings();
   updateTheme();
-  logMsg("Adafruit WebSerial ESPTool loaded.");
+  logMsg("ESP Web Flasher loaded.");
 });
 
 function initBaudRate() {

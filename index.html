@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Adafruit ESPTool</title>
+    <title>ESP Web Flasher</title>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,7 +39,7 @@
         // In development we import locally.
         window.location.hostname === "localhost"
           ? "/dist/web/index.js"
-          : "https://unpkg.com/adafruit-webserial-esptool@1.0.0/dist/web/index.js?module"
+          : "https://unpkg.com/nabucasa-webserial-esptool@1.0.0/dist/web/index.js?module"
       );
     </script>
     <script src="js/script.js" module defer></script>
@@ -47,7 +47,7 @@
   <body>
     <header class="header">
       <div class="left">
-        <img src="assets/adafruit-logo.svg" class="Adafruit-Logo" />
+        <!-- <img src="assets/adafruit-logo.svg" class="Adafruit-Logo" /> -->
       </div>
       <div class="right">
         <select id="baudRate"></select>
@@ -57,12 +57,10 @@
     <main class="main">
       <div id="notSupported" class="notSupported">
         Sorry, <b>Web Serial</b> is not supported on this device, make sure
-        you're running Chrome 78 or later and have enabled the
-        <code>#enable-experimental-web-platform-features</code> flag in
-        <code>chrome://flags</code>
+        you're running Chrome 89 or later.
       </div>
       <div class="subheader">
-        <div class="title left">Adafruit ESPTool</div>
+        <div class="title left">ESP Web Flasher</div>
         <div class="right">
           <label for="darkmode"> Dark Mode </label>
           <div class="onoffswitch">
