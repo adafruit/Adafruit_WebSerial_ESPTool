@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - fork
 
 jobs:
   update_release_draft:
