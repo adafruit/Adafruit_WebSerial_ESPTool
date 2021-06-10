@@ -773,7 +773,7 @@ export class ESPLoader extends EventTarget {
     }
     await this.port.writable!.getWriter().close();
     await this.port.close();
-    this.connected = false
+    this.connected = false;
   }
 }
 
