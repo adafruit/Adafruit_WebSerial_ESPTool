@@ -66,7 +66,7 @@ export class ESPLoader extends EventTarget {
    * ESP32 or ESP8266 based on which chip type we're talking to
    */
   async initialize() {
-    await this.softReset();
+    await this.hardReset(true);
 
     if (!this._parent) {
       this.__inputBuffer = [];
@@ -143,14 +143,14 @@ export class ESPLoader extends EventTarget {
     }
   }
 
-  async softReset() {
-    this.logger.log("Try soft reset.");
+  async hardReset(bootloader = false) {
+    this.logger.log("Try hard reset.");
     await this.port.setSignals({
       dataTerminalReady: false,
       requestToSend: true,
     });
     await this.port.setSignals({
-      dataTerminalReady: true,
+      dataTerminalReady: bootloader,
       requestToSend: false,
     });
     await new Promise((resolve) => setTimeout(resolve, 1000));
