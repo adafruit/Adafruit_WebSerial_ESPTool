@@ -85,7 +85,7 @@ export class ESPLoader extends EventTarget {
     } else if (datareg == ESP32S2_DATAREGVALUE) {
       this.chipFamily = CHIP_FAMILY_ESP32S2;
     } else {
-      throw "Unknown Chip.";
+      throw new Error("Unknown Chip.");
     }
 
     // Read the OTP data for this chip and store into this.efuses array
@@ -123,6 +123,8 @@ export class ESPLoader extends EventTarget {
    * Reads data from the input stream and places it in the inputBuffer
    */
   async readLoop() {
+    this.logger.debug("Starting read loop");
+
     this._reader = this.port.readable!.getReader();
 
     try {
@@ -138,10 +140,12 @@ export class ESPLoader extends EventTarget {
         this._inputBuffer.push(...Array.from(value));
       }
     } catch (err) {
+      console.error("Read loop got disconnected");
       // Disconnected!
       this.connected = false;
       this.dispatchEvent(new Event("disconnect"));
     }
+    this.logger.debug("Finished read loop");
   }
 
   async hardReset(bootloader = false) {
@@ -176,7 +180,7 @@ export class ESPLoader extends EventTarget {
       } else if (((mac1 >> 16) & 0xff) == 1) {
         oui = [0xac, 0xd0, 0x74];
       } else {
-        throw "Couldnt determine OUI";
+        throw new Error("Couldnt determine OUI");
       }
 
       macAddr[0] = oui[0];
@@ -200,7 +204,7 @@ export class ESPLoader extends EventTarget {
       macAddr[4] = (mac1 >> 8) & 0xff;
       macAddr[5] = mac1 & 0xff;
     } else {
-      throw "Unknown chip family";
+      throw new Error("Unknown chip family");
     }
     return macAddr;
   }
@@ -235,7 +239,7 @@ export class ESPLoader extends EventTarget {
     let [value, data] = await this.getResponse(opcode, timeout);
 
     if (data === null) {
-      throw "Didn't get enough status bytes";
+      throw new Error("Didn't get enough status bytes");
     }
 
     let statusLen = 0;
@@ -253,7 +257,7 @@ export class ESPLoader extends EventTarget {
     }
 
     if (data.length < statusLen) {
-      throw "Didn't get enough status bytes";
+      throw new Error("Didn't get enough status bytes");
     }
     let status = data.slice(-statusLen, data.length);
     data = data.slice(0, -statusLen);
@@ -264,9 +268,9 @@ export class ESPLoader extends EventTarget {
     }
     if (status[0] == 1) {
       if (status[1] == ROM_INVALID_RECV_MSG) {
-        throw "Invalid (unsupported) command " + toHex(opcode);
+        throw new Error("Invalid (unsupported) command " + toHex(opcode));
       } else {
-        throw "Command failure error code " + toHex(status[1]);
+        throw new Error("Command failure error code " + toHex(status[1]));
       }
     }
     return [value, data];
@@ -446,34 +450,46 @@ export class ESPLoader extends EventTarget {
   }
 
   async setBaudrate(baud: number) {
+    if (this._parent) {
+      await this._parent.setBaudrate(baud);
+      return;
+    }
+
     if (this.chipFamily == CHIP_FAMILY_ESP8266) {
-      this.logger.log("Baud rate can only change on ESP32 and ESP32-S2");
-    } else {
-      this.logger.log("Attempting to change baud rate to " + baud + "...");
-      try {
-        // Send 115200 as the old one, otherwise the STUB seems to not work properly after changing the baud rate.
-        let buffer = pack("<II", baud, 115200);
-        await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+      throw new Error("Changing baud rate is not supported on the ESP8266");
+    }
 
-        // SerialPort does not allow to be reconfigured while open so we close and re-open
-        var readLoopRunner = this._parent ? this._parent : this;
+    this.logger.log("Attempting to change baud rate to " + baud + "...");
 
-        readLoopRunner.stopReadLoop = true;
-        await readLoopRunner._reader?.cancel();
-        readLoopRunner._reader?.releaseLock();
-        await readLoopRunner.port.close();
+    try {
+      // Send 115200 as the old one, otherwise the STUB seems to not work properly after changing the baud rate.
+      let buffer = pack("<II", baud, 115200);
+      await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
+    } catch (e) {
+      console.error(e);
+      throw new Error(
+        `Unable to change the baud rate to ${baud}: No response from set baud rate command.`
+      );
+    }
 
-        // Reopen Port
-        await readLoopRunner.port.open({ baudRate: baud });
+    try {
+      // SerialPort does not allow to be reconfigured while open so we close and re-open
+      this.stopReadLoop = true;
+      await this._reader?.cancel();
+      this._reader?.releaseLock();
+      await this.port.close();
 
-        // Restart Readloop
-        readLoopRunner.stopReadLoop = false;
-        readLoopRunner.readLoop();
+      // Reopen Port
+      await this.port.open({ baudRate: baud });
 
-        this.logger.log("Changed baud rate to " + baud);
-      } catch (e) {
-        throw "Unable to change the baud rate to " + baud + ".";
-      }
+      // Restart Readloop
+      this.stopReadLoop = false;
+      this.readLoop();
+
+      this.logger.log(`Changed baud rate to ${baud}`);
+    } catch (e) {
+      console.error(e);
+      throw new Error(`Unable to change the baud rate to ${baud}: ${e}`);
     }
   }
 
@@ -492,7 +508,7 @@ export class ESPLoader extends EventTarget {
       await sleep(100);
     }
 
-    throw "Couldn't sync to ESP. Try resetting.";
+    throw new Error("Couldn't sync to ESP. Try resetting.");
   }
 
   /**
@@ -538,7 +554,7 @@ export class ESPLoader extends EventTarget {
     offset = 0
   ) {
     let filesize = binaryData.byteLength;
-    this.logger.log("\nWriting data with filesize:" + filesize);
+    this.logger.log("Writing data with filesize:" + filesize);
     await this.flashBegin(filesize, offset);
     let block = [];
     let seq = 0;
@@ -757,7 +773,7 @@ export class ESPLoader extends EventTarget {
     const pChar = String.fromCharCode(...p!);
 
     if (pChar != "OHAI") {
-      throw "Failed to start stub. Unexpected response: " + pChar;
+      throw new Error("Failed to start stub. Unexpected response: " + pChar);
     }
     this.logger.log("Stub is now running...");
     const espStubLoader = new EspStubLoader(this.port, this.logger, this);
@@ -820,18 +836,18 @@ class EspStubLoader extends ESPLoader {
       [stub.text_start, stub.text_start + stub.text.length],
     ]) {
       if (load_start < end && load_end > start) {
-        throw (
+        throw new Error(
           "Software loader is resident at " +
-          toHex(start, 8) +
-          "-" +
-          toHex(end, 8) +
-          ". " +
-          "Can't load binary at overlapping address range " +
-          toHex(load_start, 8) +
-          "-" +
-          toHex(load_end, 8) +
-          ". " +
-          "Try changing the binary loading address."
+            toHex(start, 8) +
+            "-" +
+            toHex(end, 8) +
+            ". " +
+            "Can't load binary at overlapping address range " +
+            toHex(load_start, 8) +
+            "-" +
+            toHex(load_end, 8) +
+            ". " +
+            "Try changing the binary loading address."
         );
       }
     }
