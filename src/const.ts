@@ -18,8 +18,8 @@ export const flashSizes = {
   "16MB": 0x90,
 };
 
-export const FLASH_WRITE_SIZE = 0x200;
-export const ESP32S2_FLASH_WRITE_SIZE = 0x400;
+export const FLASH_WRITE_SIZE = 0x400;
+export const STUB_FLASH_WRITE_SIZE = 0x4000;
 export const FLASH_SECTOR_SIZE = 0x1000; // Flash sector size, minimum unit of erase.
 export const ESP_ROM_BAUD = 115200;
 
