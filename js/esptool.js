@@ -90,8 +90,6 @@ class EspLoader {
       if (params.debug !== false) {
         this.debug = true;
       }
-      console.log(params.debug)
-      console.log(this.debug)
       this.debugMsg = params.debugMsg
     } else {
       this.debugMsg = this.logMsg()
