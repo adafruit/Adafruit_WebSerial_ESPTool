@@ -2,6 +2,10 @@
 
 A Web Serial package for updating your ESP bootloader via the browser.
 
+## Used by
+
+This project is used by the [ESP Web Tools](https://github.com/esphome/esp-web-tools), the one click button to install your ESP microcontrollers via the browser.
+
 ## Local development
 
 - Clone this repository.
