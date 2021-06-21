@@ -58,6 +58,9 @@ export const ESP_SPI_ATTACH = 0x0d;
 export const ESP_CHANGE_BAUDRATE = 0x0f;
 export const ESP_SPI_FLASH_MD5 = 0x13;
 export const ESP_CHECKSUM_MAGIC = 0xef;
+export const ESP_FLASH_DEFL_BEGIN = 0x10;
+export const ESP_FLASH_DEFL_DATA = 0x11;
+export const ESP_FLASH_DEFL_END = 0x12;
 
 export const ROM_INVALID_RECV_MSG = 0x05;
 

@@ -34,9 +34,13 @@ import {
   CHIP_ERASE_TIMEOUT,
   timeoutPerMb,
   ESP_ROM_BAUD,
+  ESP_FLASH_DEFL_BEGIN,
+  ESP_FLASH_DEFL_DATA,
+  ESP_FLASH_DEFL_END,
 } from "./const";
 import { getStubCode } from "./stubs";
 import { pack, sleep, slipEncode, toHex, unpack } from "./util";
+import * as pako from "pako";
 
 export class ESPLoader extends EventTarget {
   chipFamily!: ChipFamily;
@@ -554,46 +558,91 @@ export class ESPLoader extends EventTarget {
    */
   async flashData(
     binaryData: ArrayBuffer,
-    updateProgress: (bytesWritten: number) => void,
-    offset = 0
+    updateProgress: (bytesWritten: number, totalBytes: number) => void,
+    offset = 0,
+    compress = false
   ) {
-    let filesize = binaryData.byteLength;
-    this.logger.log("Writing data with filesize:" + filesize);
-    await this.flashBegin(filesize, offset);
+    let uncompressedFilesize = binaryData.byteLength;
+    let compressedFilesize = 0;
+
+    let dataToFlash;
+
+    if (compress) {
+      dataToFlash = pako.deflate(new Uint8Array(binaryData), {
+        level: 9,
+      }).buffer;
+      compressedFilesize = dataToFlash.byteLength;
+      this.logger.log(
+        `Writing data with filesize: ${uncompressedFilesize}. Compressed Size: ${compressedFilesize}`
+      );
+      await this.flashDeflBegin(
+        uncompressedFilesize,
+        compressedFilesize,
+        offset
+      );
+    } else {
+      this.logger.log(`Writing data with filesize: ${uncompressedFilesize}`);
+      dataToFlash = binaryData;
+      await this.flashBegin(uncompressedFilesize, offset);
+    }
+
     let block = [];
     let seq = 0;
     let written = 0;
-    // let address = offset;
     let position = 0;
     let stamp = Date.now();
     let flashWriteSize = this.getFlashWriteSize();
 
+    let filesize = compress ? compressedFilesize : uncompressedFilesize;
+
     while (filesize - position > 0) {
-      /*logMsg(
-          "Writing at " + toHex(address + seq * flashWriteSize, 8) + "... (" + percentage + " %)"
-      );*/
-      if (filesize - position >= flashWriteSize) {
-        block = Array.from(
-          new Uint8Array(binaryData, position, flashWriteSize)
-        );
-      } else {
-        // Pad the last block
-        block = Array.from(
-          new Uint8Array(binaryData, position, filesize - position)
-        );
-        block = block.concat(
-          new Array(flashWriteSize - block.length).fill(0xff)
+      if (this.debug) {
+        this.logger.log(
+          `Writing at ${toHex(offset + seq * flashWriteSize, 8)} `
         );
       }
-      await this.flashBlock(block, seq, 2000);
+      if (filesize - position >= flashWriteSize) {
+        block = Array.from(
+          new Uint8Array(dataToFlash, position, flashWriteSize)
+        );
+      } else {
+        // Pad the last block only if we are sending uncompressed data.
+        block = Array.from(
+          new Uint8Array(dataToFlash, position, filesize - position)
+        );
+        if (!compress) {
+          block = block.concat(
+            new Array(flashWriteSize - block.length).fill(0xff)
+          );
+        }
+      }
+      if (compress) {
+        await this.flashDeflBlock(block, seq, 2000);
+      } else {
+        await this.flashBlock(block, seq, 2000);
+      }
       seq += 1;
-      written += block.length;
+      // If using compression we update the progress with the proportional size of the block taking into account the compression ratio.
+      // This way we report progress on the uncompressed size
+      written += compress
+        ? Math.round((block.length * uncompressedFilesize) / compressedFilesize)
+        : block.length;
       position += flashWriteSize;
-      updateProgress(written);
+      updateProgress(written, filesize);
     }
     this.logger.log(
       "Took " + (Date.now() - stamp) + "ms to write " + filesize + " bytes"
     );
+
+    // Only send flashF finish if running the stub because ir causes the ROM to exit and run user code
+    if (this.IS_STUB) {
+      await this.flashBegin(0, 0);
+      if (compress) {
+        await this.flashDeflFinish();
+      } else {
+        await this.flashFinish();
+      }
+    }
   }
 
   /**
@@ -606,6 +655,13 @@ export class ESPLoader extends EventTarget {
       pack("<IIII", data.length, seq, 0, 0).concat(data),
       this.checksum(data),
       timeout
+    );
+  }
+  async flashDeflBlock(data: number[], seq: number, timeout = 100) {
+    await this.checkCommand(
+      ESP_FLASH_DEFL_DATA,
+      pack("<IIII", data.length, seq, 0, 0).concat(data),
+      this.checksum(data)
     );
   }
 
@@ -666,9 +722,50 @@ export class ESPLoader extends EventTarget {
     return numBlocks;
   }
 
+  /**
+   * @name flashDeflBegin
+   *
+   */
+
+  async flashDeflBegin(
+    size = 0,
+    compressedSize = 0,
+    offset = 0,
+    encrypted = false
+  ) {
+    // Start downloading compressed data to Flash (performs an erase)
+    // Returns number of blocks to write.
+    let flashWriteSize = this.getFlashWriteSize();
+    let numBlocks = Math.floor(
+      (compressedSize + flashWriteSize - 1) / flashWriteSize
+    );
+    let eraseBlocks = Math.floor((size + flashWriteSize - 1) / flashWriteSize);
+    let writeSize = 0;
+    let timeout = 0;
+    let buffer;
+
+    if (this.IS_STUB) {
+      writeSize = size; // stub expects number of bytes here, manages erasing internally
+      timeout = DEFAULT_TIMEOUT;
+    } else {
+      writeSize = eraseBlocks * flashWriteSize; // ROM expects rounded up to erase block size
+      timeout = timeoutPerMb(ERASE_REGION_TIMEOUT_PER_MB, writeSize); // ROM performs the erase up front
+    }
+    buffer = pack("<IIII", writeSize, numBlocks, flashWriteSize, offset);
+
+    await this.checkCommand(ESP_FLASH_DEFL_BEGIN, buffer, 0, timeout);
+
+    return numBlocks;
+  }
+
   async flashFinish() {
     let buffer = pack("<I", 1);
     await this.checkCommand(ESP_FLASH_END, buffer);
+  }
+
+  async flashDeflFinish() {
+    let buffer = pack("<I", 1);
+    await this.checkCommand(ESP_FLASH_DEFL_END, buffer);
   }
 
   /**
