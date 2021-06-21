@@ -5,9 +5,11 @@ name: CI
 
 on:
   push:
-    branches: [main, fork]
+    branches:
+      - main
   pull_request:
-    branches: [main, fork]
+    branches:
+      - main
 
 jobs:
   build:
