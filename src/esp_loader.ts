@@ -33,6 +33,7 @@ import {
   ESP_ERASE_FLASH,
   CHIP_ERASE_TIMEOUT,
   timeoutPerMb,
+  ESP_ROM_BAUD,
 } from "./const";
 import { getStubCode } from "./stubs";
 import { pack, sleep, slipEncode, toHex, unpack } from "./util";
@@ -450,11 +451,6 @@ export class ESPLoader extends EventTarget {
   }
 
   async setBaudrate(baud: number) {
-    if (this._parent) {
-      await this._parent.setBaudrate(baud);
-      return;
-    }
-
     if (this.chipFamily == CHIP_FAMILY_ESP8266) {
       throw new Error("Changing baud rate is not supported on the ESP8266");
     }
@@ -462,8 +458,8 @@ export class ESPLoader extends EventTarget {
     this.logger.log("Attempting to change baud rate to " + baud + "...");
 
     try {
-      // Send 115200 as the old one, otherwise the STUB seems to not work properly after changing the baud rate.
-      let buffer = pack("<II", baud, 115200);
+      // Send ESP_ROM_BAUD(115200) as the old one if running STUB otherwise 0
+      let buffer = pack("<II", baud, this.IS_STUB ? ESP_ROM_BAUD : 0);
       await this.checkCommand(ESP_CHANGE_BAUDRATE, buffer);
     } catch (e) {
       console.error(e);
@@ -472,6 +468,14 @@ export class ESPLoader extends EventTarget {
       );
     }
 
+    if (this._parent) {
+      await this._parent.reconfigurePort(baud);
+    } else {
+      await this.reconfigurePort(baud);
+    }
+  }
+
+  async reconfigurePort(baud: number) {
     try {
       // SerialPort does not allow to be reconfigured while open so we close and re-open
       this.stopReadLoop = true;
