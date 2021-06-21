@@ -149,13 +149,12 @@ for key, stub in stubs.items():
     print("Text size:", str(len(code["text"])) + " bytes")
     print("Data size:", str(len(code["data"])) + " bytes")
 
-    print(code["text"])
-    print(base64.b64encode(code["text"]))
     code["text"] = base64.b64encode(code["text"]).decode("utf-8")
     code["data"] = base64.b64encode(code["data"]).decode("utf-8")
 
-    jsondata = json.dumps(code)
+    jsondata = json.dumps(code, indent=2)
 
-    f  = open(key + ".json", "w+")
+    f  = open(f"src/stubs/{key}.json", "w+")
     f.write(jsondata)
     f.close()
+    print()

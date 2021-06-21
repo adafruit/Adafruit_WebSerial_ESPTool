@@ -1,5 +1,13 @@
-# Adafruit ESPTool
+# ESP Web Flasher
 
-A Web Serial tool for updating your ESP bootloader.
+A Web Serial package for updating your ESP bootloader via the browser.
 
-A live copy of the tool is hosted here: https://adafruit.github.io/Adafruit_WebSerial_ESPTool/
+## Local development
+
+- Clone this repository.
+- Install dependencies with `npm`
+- Run `script/develop`
+
+## Fork
+
+This is a fork of [Adafruit WebSerial ESPTool](https://github.com/adafruit/Adafruit_WebSerial_ESPTool). At the time fo the fork, their repository was a single-use website. This fork converted the code into a reusable package and published it to NPM.
