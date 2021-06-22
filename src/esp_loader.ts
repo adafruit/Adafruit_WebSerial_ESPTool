@@ -6,9 +6,6 @@ import {
   Logger,
   DEFAULT_TIMEOUT,
   ERASE_REGION_TIMEOUT_PER_MB,
-  ESP32S2_DATAREGVALUE,
-  ESP32_DATAREGVALUE,
-  ESP8266_DATAREGVALUE,
   ESP_CHANGE_BAUDRATE,
   ESP_CHECKSUM_MAGIC,
   ESP_FLASH_BEGIN,
@@ -18,6 +15,7 @@ import {
   ESP_MEM_DATA,
   ESP_MEM_END,
   ESP_READ_REG,
+  ESP_WRITE_REG,
   ESP_SPI_ATTACH,
   ESP_SPI_SET_PARAMS,
   ESP_SYNC,
@@ -37,6 +35,19 @@ import {
   ESP_FLASH_DEFL_BEGIN,
   ESP_FLASH_DEFL_DATA,
   ESP_FLASH_DEFL_END,
+  ESP32_BOOTLOADER_FLASH_OFFSET,
+  BOOTLOADER_FLASH_OFFSET,
+  ESP_IMAGE_MAGIC,
+  FLASH_SIZES,
+  ESP32_FLASH_SIZES,
+  FLASH_FREQUENCIES,
+  FLASH_MODES,
+  getSpiFlashAddresses,
+  SpiFlashAddresses,
+  getUartDateRegAddress,
+  DETECTED_FLASH_SIZES,
+  CHIP_DETECT_MAGIC_REG_ADDR,
+  CHIP_DETECT_MAGIC_VALUES,
 } from "./const";
 import { getStubCode } from "./stubs";
 import { pack, sleep, slipEncode, toHex, unpack } from "./util";
@@ -51,6 +62,7 @@ export class ESPLoader extends EventTarget {
   IS_STUB = false;
   connected = true;
   stopReadLoop = false;
+  flashSize: string | null = null;
 
   __inputBuffer?: number[];
   private _reader?: ReadableStreamDefaultReader<Uint8Array>;
@@ -81,17 +93,14 @@ export class ESPLoader extends EventTarget {
     }
     await this.sync();
 
-    // Determine chip family
-    let datareg = await this.readRegister(0x60000078);
-    if (datareg == ESP32_DATAREGVALUE) {
-      this.chipFamily = CHIP_FAMILY_ESP32;
-    } else if (datareg == ESP8266_DATAREGVALUE) {
-      this.chipFamily = CHIP_FAMILY_ESP8266;
-    } else if (datareg == ESP32S2_DATAREGVALUE) {
-      this.chipFamily = CHIP_FAMILY_ESP32S2;
-    } else {
+    // Determine chip family and name
+    let chipMagicValue = await this.readRegister(CHIP_DETECT_MAGIC_REG_ADDR);
+    let chip = CHIP_DETECT_MAGIC_VALUES[chipMagicValue];
+    if (chip === undefined) {
       throw new Error("Unknown Chip.");
     }
+    this.chipName = chip.name;
+    this.chipFamily = chip.family;
 
     // Read the OTP data for this chip and store into this.efuses array
     let baseAddr: number;
@@ -105,22 +114,15 @@ export class ESPLoader extends EventTarget {
     for (let i = 0; i < 4; i++) {
       this._efuses[i] = await this.readRegister(baseAddr! + 4 * i);
     }
+    this.logger.log(`Chip type ${this.chipName}`);
 
-    // The specific name of the chip, e.g. ESP8266EX, to the best
-    // of our ability to determine without a stub bootloader.
-    if (this.chipFamily == CHIP_FAMILY_ESP32) {
-      this.chipName = "ESP32";
-    }
-    if (this.chipFamily == CHIP_FAMILY_ESP32S2) {
-      this.chipName = "ESP32-S2";
-    }
-    if (this.chipFamily == CHIP_FAMILY_ESP8266) {
-      if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
-        this.chipName = "ESP8285";
-      } else {
-        this.chipName = "ESP8266EX";
-      }
-    }
+    // if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
+    //   this.chipName = "ESP8285";
+    // } else {
+    //   this.chipName = "ESP8266EX";
+    // }
+
+    //this.logger.log("FLASHID");
   }
 
   /**
@@ -562,6 +564,7 @@ export class ESPLoader extends EventTarget {
     offset = 0,
     compress = false
   ) {
+    this.updateImageFlashParams(offset, binaryData);
     let uncompressedFilesize = binaryData.byteLength;
     let compressedFilesize = 0;
 
@@ -768,6 +771,277 @@ export class ESPLoader extends EventTarget {
     await this.checkCommand(ESP_FLASH_DEFL_END, buffer);
   }
 
+  getBootloaderOffset() {
+    if (
+      this.chipFamily == CHIP_FAMILY_ESP32 ||
+      this._parent?.chipFamily == CHIP_FAMILY_ESP32
+    ) {
+      return ESP32_BOOTLOADER_FLASH_OFFSET;
+    }
+    return BOOTLOADER_FLASH_OFFSET;
+  }
+
+  updateImageFlashParams(offset: number, image: ArrayBuffer) {
+    // Modify the flash mode & size bytes if this looks like an executable bootloader image
+    if (image.byteLength < 8) {
+      return image; //# not long enough to be a bootloader image
+    }
+
+    // unpack the (potential) image header
+
+    var header = Array.from(new Uint8Array(image, 0, 4));
+    let headerMagic = header[0];
+    let headerFlashMode = header[2];
+    let heatherFlashSizeFreq = header[3];
+
+    this.logger.debug(
+      `Image header, Magic=${toHex(headerMagic)}, FlashMode=${toHex(
+        headerFlashMode
+      )}, FlashSizeFreq=${toHex(heatherFlashSizeFreq)}`
+    );
+
+    if (offset != this.getBootloaderOffset()) {
+      return image; // not flashing bootloader offset, so don't modify this image
+    }
+
+    // easy check if this is an image: does it start with a magic byte?
+    if (headerMagic != ESP_IMAGE_MAGIC) {
+      this.logger.log(
+        "Warning: Image file at %s doesn't look like an image file, so not changing any flash settings.",
+        toHex(offset, 4)
+      );
+      return image;
+    }
+
+    // make sure this really is an image, and not just data that
+    // starts with esp.ESP_IMAGE_MAGIC (mostly a problem for encrypted
+    // images that happen to start with a magic byte
+
+    // TODO Implement this test from esptool.py
+    /*
+    try:
+        test_image = esp.BOOTLOADER_IMAGE(io.BytesIO(image))
+        test_image.verify()
+    except Exception:
+        print("Warning: Image file at 0x%x is not a valid %s image, so not changing any flash settings." % (address, esp.CHIP_NAME))
+        return image
+    */
+
+    this.logger.log("Image being flashed is a bootloader");
+
+    let flashMode = FLASH_MODES["dio"]; // For now we always select dio, a common value supported by many flash chips and ESP boards
+    let flashFreq = FLASH_FREQUENCIES["40m"]; // For now we always select 40m, a common value supported by many flash chips and ESP boards
+    let flashSize =
+      this.getFlashSizes()[this.flashSize ? this.flashSize : "4MB"]; // If size was autodetected we use it otherwise we default to 4MB
+    let flashParams = pack("BB", flashMode, flashSize + flashFreq);
+    let imageFlashParams = new Uint8Array(image, 2, 2);
+
+    if (
+      flashParams[0] != imageFlashParams[0] ||
+      flashParams[1] != imageFlashParams[1]
+    ) {
+      imageFlashParams[0] = flashParams[0];
+      imageFlashParams[1] = flashParams[1];
+
+      this.logger.log(
+        `Patching Flash parameters header bytes to ${toHex(
+          flashParams[0],
+          2
+        )} ${toHex(flashParams[1], 2)}`
+      );
+    } else {
+      this.logger.log("Flash parameters header did not need patching.");
+    }
+    return image;
+  }
+
+  getFlashSizes() {
+    if (this.getChipFamily() == CHIP_FAMILY_ESP32) {
+      return ESP32_FLASH_SIZES;
+    }
+    return FLASH_SIZES;
+  }
+
+  async flashId() {
+    let SPIFLASH_RDID = 0x9f;
+    let result = await this.runSpiFlashCommand(SPIFLASH_RDID, [], 24);
+    return result;
+  }
+
+  getChipFamily() {
+    return this._parent ? this._parent.chipFamily : this.chipFamily;
+  }
+
+  async writeRegister(
+    address: number,
+    value: number,
+    mask = 0xffffffff,
+    delayUs = 0,
+    delayAfterUs = 0
+  ) {
+    let buffer = pack("<IIII", address, value, mask, delayUs);
+    if (delayAfterUs > 0) {
+      // add a dummy write to a date register as an excuse to have a delay
+      buffer.concat(
+        pack(
+          "<IIII",
+          getUartDateRegAddress(this.getChipFamily()),
+          0,
+          0,
+          delayAfterUs
+        )
+      );
+    }
+    await this.checkCommand(ESP_WRITE_REG, buffer);
+  }
+
+  async setDataLengths(
+    spiAddresses: SpiFlashAddresses,
+    mosiBits: number,
+    misoBits: number
+  ) {
+    if (spiAddresses.mosiDlenOffs != -1) {
+      // ESP32/32S2/32C3 has a more sophisticated way to set up "user" commands
+      let SPI_MOSI_DLEN_REG = spiAddresses.regBase + spiAddresses.mosiDlenOffs;
+      let SPI_MISO_DLEN_REG = spiAddresses.regBase + spiAddresses.misoDlenOffs;
+      if (mosiBits > 0) {
+        await this.writeRegister(SPI_MOSI_DLEN_REG, mosiBits - 1);
+      }
+      if (misoBits > 0) {
+        await this.writeRegister(SPI_MISO_DLEN_REG, misoBits - 1);
+      }
+    } else {
+      let SPI_DATA_LEN_REG = spiAddresses.regBase + spiAddresses.usr1Offs;
+      let SPI_MOSI_BITLEN_S = 17;
+      let SPI_MISO_BITLEN_S = 8;
+      let mosiMask = mosiBits == 0 ? 0 : mosiBits - 1;
+      let misoMask = misoBits == 0 ? 0 : misoBits - 1;
+      let value =
+        (misoMask << SPI_MISO_BITLEN_S) | (mosiMask << SPI_MOSI_BITLEN_S);
+      await this.writeRegister(SPI_DATA_LEN_REG, value);
+    }
+  }
+  async waitDone(spiCmdReg: number, spiCmdUsr: number) {
+    for (let i = 0; i < 10; i++) {
+      let cmdValue = await this.readRegister(spiCmdReg);
+      if ((cmdValue & spiCmdUsr) == 0) {
+        return;
+      }
+    }
+    throw Error("SPI command did not complete in time");
+  }
+
+  async runSpiFlashCommand(
+    spiflashCommand: number,
+    data: number[],
+    readBits = 0
+  ) {
+    // Run an arbitrary SPI flash command.
+
+    // This function uses the "USR_COMMAND" functionality in the ESP
+    // SPI hardware, rather than the precanned commands supported by
+    // hardware. So the value of spiflash_command is an actual command
+    // byte, sent over the wire.
+
+    // After writing command byte, writes 'data' to MOSI and then
+    // reads back 'read_bits' of reply on MISO. Result is a number.
+
+    // SPI_USR register flags
+    let SPI_USR_COMMAND = 1 << 31;
+    let SPI_USR_MISO = 1 << 28;
+    let SPI_USR_MOSI = 1 << 27;
+
+    // SPI registers, base address differs ESP32* vs 8266
+    let spiAddresses = getSpiFlashAddresses(this.getChipFamily());
+    let base = spiAddresses.regBase;
+    let SPI_CMD_REG = base + 0x00;
+    let SPI_USR_REG = base + spiAddresses.usrOffs;
+    let SPI_USR2_REG = base + spiAddresses.usr2Offs;
+    let SPI_W0_REG = base + spiAddresses.w0Offs;
+
+    // SPI peripheral "command" bitmasks for SPI_CMD_REG
+    let SPI_CMD_USR = 1 << 18;
+
+    // shift values
+    let SPI_USR2_COMMAND_LEN_SHIFT = 28;
+
+    if (readBits > 32) {
+      throw new Error(
+        "Reading more than 32 bits back from a SPI flash operation is unsupported"
+      );
+    }
+    if (data.length > 64) {
+      throw new Error(
+        "Writing more than 64 bytes of data with one SPI command is unsupported"
+      );
+    }
+
+    let dataBits = data.length * 8;
+    let oldSpiUsr = await this.readRegister(SPI_USR_REG);
+    let oldSpiUsr2 = await this.readRegister(SPI_USR2_REG);
+
+    let flags = SPI_USR_COMMAND;
+
+    if (readBits > 0) {
+      flags |= SPI_USR_MISO;
+    }
+    if (dataBits > 0) {
+      flags |= SPI_USR_MOSI;
+    }
+
+    await this.setDataLengths(spiAddresses, dataBits, readBits);
+
+    await this.writeRegister(SPI_USR_REG, flags);
+    await this.writeRegister(
+      SPI_USR2_REG,
+      (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflashCommand
+    );
+    if (dataBits == 0) {
+      await this.writeRegister(SPI_W0_REG, 0); // clear data register before we read it
+    } else {
+      data.concat(new Array(data.length % 4).fill(0x00)); // pad to 32-bit multiple
+
+      let words = unpack("I".repeat(Math.floor(data.length / 4)), data);
+      let nextReg = SPI_W0_REG;
+
+      this.logger.debug(`Words Length: ${words.length}`);
+
+      for (const word of words) {
+        this.logger.debug(
+          `Writing word ${toHex(word)} to register offset ${toHex(nextReg)}`
+        );
+        await this.writeRegister(nextReg, word);
+        nextReg += 4;
+      }
+    }
+    await this.writeRegister(SPI_CMD_REG, SPI_CMD_USR);
+    await this.waitDone(SPI_CMD_REG, SPI_CMD_USR);
+
+    let status = await this.readRegister(SPI_W0_REG);
+    // restore some SPI controller registers
+    await this.writeRegister(SPI_USR_REG, oldSpiUsr);
+    await this.writeRegister(SPI_USR2_REG, oldSpiUsr2);
+    return status;
+  }
+  async detectFlashSize() {
+    this.logger.log("Detecting Flash Size");
+
+    let flashId = await this.flashId();
+    let manufacturer = flashId & 0xff;
+    let flashIdLowbyte = (flashId >> 16) & 0xff;
+
+    this.logger.debug(`FlashId: ${toHex(flashId)}`);
+    this.logger.log(`Flash Manufacturer: ${manufacturer.toString(16)}`);
+    this.logger.log(
+      `Flash Device: ${((flashId >> 8) & 0xff).toString(
+        16
+      )}${flashIdLowbyte.toString(16)}`
+    );
+
+    this.flashSize = DETECTED_FLASH_SIZES[flashIdLowbyte];
+    this.logger.log(`Auto-detected Flash size: ${this.flashSize}`);
+  }
+
   /**
    * @name getEraseSize
    * Calculate an erase size given a specific size in bytes.
@@ -878,6 +1152,10 @@ export class ESPLoader extends EventTarget {
     }
     this.logger.log("Stub is now running...");
     const espStubLoader = new EspStubLoader(this.port, this.logger, this);
+
+    // Try to autodetect the flash size as soon as the stub is running.
+    await espStubLoader.detectFlashSize();
+
     return espStubLoader;
   }
 
