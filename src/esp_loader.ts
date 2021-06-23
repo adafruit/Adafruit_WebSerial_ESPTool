@@ -98,7 +98,7 @@ export class ESPLoader extends EventTarget {
     let chipMagicValue = await this.readRegister(CHIP_DETECT_MAGIC_REG_ADDR);
     let chip = CHIP_DETECT_MAGIC_VALUES[chipMagicValue];
     if (chip === undefined) {
-      throw new Error("Unknown Chip.");
+      throw new Error(`Unknown Chip: ${toHex(chipMagicValue)}`);
     }
     this.chipName = chip.name;
     this.chipFamily = chip.family;
