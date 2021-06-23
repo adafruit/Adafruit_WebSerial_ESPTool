@@ -38,8 +38,7 @@ import {
   ESP32_BOOTLOADER_FLASH_OFFSET,
   BOOTLOADER_FLASH_OFFSET,
   ESP_IMAGE_MAGIC,
-  FLASH_SIZES,
-  ESP32_FLASH_SIZES,
+  getFlashSizes,
   FLASH_FREQUENCIES,
   FLASH_MODES,
   getSpiFlashAddresses,
@@ -831,9 +830,10 @@ export class ESPLoader extends EventTarget {
     this.logger.log("Image being flashed is a bootloader");
 
     let flashMode = FLASH_MODES["dio"]; // For now we always select dio, a common value supported by many flash chips and ESP boards
-    let flashFreq = FLASH_FREQUENCIES["40m"]; // For now we always select 40m, a common value supported by many flash chips and ESP boards
-    let flashSize =
-      this.getFlashSizes()[this.flashSize ? this.flashSize : "4MB"]; // If size was autodetected we use it otherwise we default to 4MB
+    let flashFreq = FLASH_FREQUENCIES["80m"]; // For now we always select 40m, a common value supported by many flash chips and ESP boards
+    let flashSize = getFlashSizes(this.getChipFamily())[
+      this.flashSize ? this.flashSize : "4MB"
+    ]; // If size was autodetected we use it otherwise we default to 4MB
     let flashParams = pack("BB", flashMode, flashSize + flashFreq);
     let imageFlashParams = new Uint8Array(image, 2, 2);
 
@@ -854,13 +854,6 @@ export class ESPLoader extends EventTarget {
       this.logger.log("Flash parameters header did not need patching.");
     }
     return image;
-  }
-
-  getFlashSizes() {
-    if (this.getChipFamily() == CHIP_FAMILY_ESP32) {
-      return ESP32_FLASH_SIZES;
-    }
-    return FLASH_SIZES;
   }
 
   async flashId() {

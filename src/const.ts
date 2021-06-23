@@ -24,6 +24,8 @@ export const ESP32_FLASH_SIZES = {
   "4MB": 0x20,
   "8MB": 0x30,
   "16MB": 0x40,
+  "32MB": 0x19,
+  "64MB": 0x1a,
 };
 
 export const FLASH_MODES = {
@@ -52,6 +54,21 @@ export const DETECTED_FLASH_SIZES = {
   0x1a: "64MB",
 };
 
+export const getFlashSizes = (chipFamily: ChipFamily) => {
+  switch (chipFamily) {
+    case CHIP_FAMILY_ESP32:
+      return ESP32_FLASH_SIZES;
+    case CHIP_FAMILY_ESP32S2:
+      return ESP32_FLASH_SIZES;
+    case CHIP_FAMILY_ESP8266:
+      return FLASH_SIZES;
+    case CHIP_FAMILY_ESP32C3:
+      return ESP32_FLASH_SIZES;
+    default:
+      return FLASH_SIZES;
+  }
+};
+
 export const FLASH_WRITE_SIZE = 0x400;
 export const STUB_FLASH_WRITE_SIZE = 0x4000;
 export const FLASH_SECTOR_SIZE = 0x1000; // Flash sector size, minimum unit of erase.
@@ -75,6 +92,14 @@ export const ESP8266_SPI_USR2_OFFS = 0x24;
 export const ESP8266_SPI_MOSI_DLEN_OFFS = -1;
 export const ESP8266_SPI_MISO_DLEN_OFFS = -1;
 export const ESP8266_SPI_W0_OFFS = 0x40;
+
+export const ESP32C3_SPI_REG_BASE = 0x60002000;
+export const ESP32C3_SPI_USR_OFFS = 0x18;
+export const ESP32C3_SPI_USR1_OFFS = 0x1c;
+export const ESP32C3_SPI_USR2_OFFS = 0x20;
+export const ESP32C3_SPI_MOSI_DLEN_OFFS = 0x24;
+export const ESP32C3_SPI_MISO_DLEN_OFFS = 0x28;
+export const ESP32C3_SPI_W0_OFFS = 0x58;
 
 const UART_DATE_REG_ADDR = 0x60000078;
 
@@ -206,6 +231,16 @@ export const getSpiFlashAddresses = (
         mosiDlenOffs: ESP8266_SPI_MOSI_DLEN_OFFS,
         misoDlenOffs: ESP8266_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP8266_SPI_W0_OFFS,
+      };
+    case CHIP_FAMILY_ESP32C3:
+      return {
+        regBase: ESP32C3_SPI_REG_BASE,
+        usrOffs: ESP32C3_SPI_USR_OFFS,
+        usr1Offs: ESP32C3_SPI_USR1_OFFS,
+        usr2Offs: ESP32C3_SPI_USR2_OFFS,
+        mosiDlenOffs: ESP32C3_SPI_MOSI_DLEN_OFFS,
+        misoDlenOffs: ESP32C3_SPI_MISO_DLEN_OFFS,
+        w0Offs: ESP32C3_SPI_W0_OFFS,
       };
     default:
       return {
