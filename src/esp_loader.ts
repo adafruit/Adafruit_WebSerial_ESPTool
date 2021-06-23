@@ -51,7 +51,8 @@ import {
 } from "./const";
 import { getStubCode } from "./stubs";
 import { pack, sleep, slipEncode, toHex, unpack } from "./util";
-import * as pako from "pako";
+// @ts-ignore
+import { deflate } from "pako/dist/pako.esm.mjs";
 
 export class ESPLoader extends EventTarget {
   chipFamily!: ChipFamily;
@@ -571,7 +572,7 @@ export class ESPLoader extends EventTarget {
     let dataToFlash;
 
     if (compress) {
-      dataToFlash = pako.deflate(new Uint8Array(binaryData), {
+      dataToFlash = deflate(new Uint8Array(binaryData), {
         level: 9,
       }).buffer;
       compressedFilesize = dataToFlash.byteLength;
