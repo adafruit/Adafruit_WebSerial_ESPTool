@@ -135,7 +135,7 @@ export type ChipFamily =
   | typeof CHIP_FAMILY_ESP32H2;
 
 export const CHIP_DETECT_MAGIC_VALUES = {
-  0xfff0c101: { name: "ESP8266", family: CHIP_FAMILY_ESP8266 },
+  [-999167]: { name: "ESP8266", family: CHIP_FAMILY_ESP8266 },
   0x00f01d83: { name: "ESP32", family: CHIP_FAMILY_ESP32 },
   0x000007c6: { name: "ESP32-S2", family: CHIP_FAMILY_ESP32S2 },
   0x9: { name: "ESP32-S3", family: CHIP_FAMILY_ESP32S3 },

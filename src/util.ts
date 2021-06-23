@@ -100,7 +100,12 @@ export const unpack = (format: string, bytes: number[]) => {
 };
 
 export const toHex = (value: number, size = 2) => {
-  return "0x" + value.toString(16).toUpperCase().padStart(size, "0");
+  let hex = value.toString(16).toUpperCase();
+  if (hex.startsWith("-")) {
+    return "-0x" + hex.substring(1).padStart(size, "0");
+  } else {
+    return "0x" + hex.padStart(size, "0");
+  }
 };
 
 export const sleep = (ms: number) =>

@@ -97,7 +97,12 @@ export class ESPLoader extends EventTarget {
     let chipMagicValue = await this.readRegister(CHIP_DETECT_MAGIC_REG_ADDR);
     let chip = CHIP_DETECT_MAGIC_VALUES[chipMagicValue];
     if (chip === undefined) {
-      throw new Error(`Unknown Chip: ${toHex(chipMagicValue)}`);
+      throw new Error(
+        `Unknown Chip: Hex: ${toHex(
+          chipMagicValue,
+          8
+        ).toLowerCase()} Number: ${chipMagicValue}`
+      );
     }
     this.chipName = chip.name;
     this.chipFamily = chip.family;
@@ -829,8 +834,10 @@ export class ESPLoader extends EventTarget {
 
     this.logger.log("Image being flashed is a bootloader");
 
-    let flashMode = FLASH_MODES["dio"]; // For now we always select dio, a common value supported by many flash chips and ESP boards
-    let flashFreq = FLASH_FREQUENCIES["80m"]; // For now we always select 40m, a common value supported by many flash chips and ESP boards
+    // For now we always select dio, a common value supported by many flash chips and ESP boards
+    let flashMode = FLASH_MODES["dio"];
+    // For now we always select 40m, a common value supported by many flash chips and ESP boards
+    let flashFreq = FLASH_FREQUENCIES["40m"];
     let flashSize = getFlashSizes(this.getChipFamily())[
       this.flashSize ? this.flashSize : "4MB"
     ]; // If size was autodetected we use it otherwise we default to 4MB
