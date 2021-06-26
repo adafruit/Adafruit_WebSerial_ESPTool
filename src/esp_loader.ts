@@ -61,7 +61,6 @@ export class ESPLoader extends EventTarget {
   debug = false;
   IS_STUB = false;
   connected = true;
-  stopReadLoop = false;
   flashSize: string | null = null;
 
   __inputBuffer?: number[];
@@ -95,11 +94,11 @@ export class ESPLoader extends EventTarget {
 
     // Determine chip family and name
     let chipMagicValue = await this.readRegister(CHIP_DETECT_MAGIC_REG_ADDR);
-    let chip = CHIP_DETECT_MAGIC_VALUES[chipMagicValue];
+    let chip = CHIP_DETECT_MAGIC_VALUES[chipMagicValue >>> 0];
     if (chip === undefined) {
       throw new Error(
         `Unknown Chip: Hex: ${toHex(
-          chipMagicValue,
+          chipMagicValue >>> 0,
           8
         ).toLowerCase()} Number: ${chipMagicValue}`
       );
@@ -140,7 +139,7 @@ export class ESPLoader extends EventTarget {
     this._reader = this.port.readable!.getReader();
 
     try {
-      while (!this.stopReadLoop) {
+      while (true) {
         const { value, done } = await this._reader.read();
         if (done) {
           this._reader.releaseLock();
@@ -489,16 +488,16 @@ export class ESPLoader extends EventTarget {
   async reconfigurePort(baud: number) {
     try {
       // SerialPort does not allow to be reconfigured while open so we close and re-open
-      this.stopReadLoop = true;
+      // reader.cancel() causes the Promise returned by the read() operation running on
+      // the readLoop to return immediately with { value: undefined, done: true } and thus
+      // breaking the loop and exiting readLoop();
       await this._reader?.cancel();
-      this._reader?.releaseLock();
       await this.port.close();
 
       // Reopen Port
       await this.port.open({ baudRate: baud });
 
       // Restart Readloop
-      this.stopReadLoop = false;
       this.readLoop();
 
       this.logger.log(`Changed baud rate to ${baud}`);

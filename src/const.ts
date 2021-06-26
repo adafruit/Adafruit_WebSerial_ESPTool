@@ -5,7 +5,10 @@ export interface Logger {
   error(msg: string, ...args: any[]): void;
   debug(msg: string, ...args: any[]): void;
 }
-export const baudRates = [921600, 115200, 230400, 460800];
+
+export const baudRates = [
+  115200, 128000, 153600, 230400, 460800, 921600, 1500000, 2000000,
+];
 export const FLASH_SIZES = {
   "512KB": 0x00,
   "256KB": 0x10,
@@ -135,7 +138,7 @@ export type ChipFamily =
   | typeof CHIP_FAMILY_ESP32H2;
 
 export const CHIP_DETECT_MAGIC_VALUES = {
-  [-999167]: { name: "ESP8266", family: CHIP_FAMILY_ESP8266 },
+  0xfff0c101: { name: "ESP8266", family: CHIP_FAMILY_ESP8266 },
   0x00f01d83: { name: "ESP32", family: CHIP_FAMILY_ESP32 },
   0x000007c6: { name: "ESP32-S2", family: CHIP_FAMILY_ESP32S2 },
   0x9: { name: "ESP32-S3", family: CHIP_FAMILY_ESP32S3 },
