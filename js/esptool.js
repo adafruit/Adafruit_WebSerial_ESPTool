@@ -400,7 +400,7 @@ class EspLoader {
     packet = packet.concat(this.slipEncode(struct.pack("I", checksum)));
     packet = packet.concat(this.slipEncode(buffer));
     packet.push(0xC0);
-    this._debugMsg("Writing " + packet.length + " byte" + (packet.length == 1 ? "" : "s") + ":", packet);
+    this.debugMsg("Writing " + packet.length + " byte" + (packet.length == 1 ? "" : "s") + ":", packet);
     await this.writeToStream(packet);
   };
 
@@ -501,7 +501,7 @@ class EspLoader {
             this.debugMsg("Timed out waiting for packet " + waitingFor);
             throw new SlipReadError("Timed out waiting for packet " + waitingFor);
         }
-        this._debugMsg("Read " + readBytes.length + " bytes: " + this.hexFormatter(readBytes));
+        this.debugMsg("Read " + readBytes.length + " bytes: " + this.hexFormatter(readBytes));
         for (let b of readBytes) {
             if (partialPacket === null) {  // waiting for packet header
                 if (b == 0xc0) {
@@ -525,7 +525,7 @@ class EspLoader {
             } else if (b == 0xdb) {  // start of escape sequence
                 inEscape = true;
             } else if (b == 0xc0) {  // end of packet
-                this._debugMsg("Received full packet: " + this.hexFormatter(partialPacket))
+                this.debugMsg("Received full packet: " + this.hexFormatter(partialPacket))
                 return partialPacket;
                 partialPacket = null;
             } else {  // normal byte in packet
@@ -831,8 +831,6 @@ class EspLoader {
       let stub = await this.getStubCode();
       let load_start = offset;
       let load_end = offset + size;
-      console.log(load_start, load_end);
-      console.log(stub.data_start, stub.data.length, stub.text_start, stub.text.length);
       for (let [start, end] of [
         [stub.data_start, stub.data_start + stub.data.length],
         [stub.text_start, stub.text_start + stub.text.length]]
@@ -987,6 +985,10 @@ class EspStubLoader extends EspLoader {
   getFlashWriteSize() {
       return STUBLOADER_FLASH_WRITE_SIZE;
   };
+}
+
+class Esp32StubLoader extends EspStubLoader {
+
 }
 
 /*
