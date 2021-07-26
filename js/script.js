@@ -5,21 +5,8 @@
 
 let espTool;
 let isConnected = false;
-let stubLoader = null;
 
 const baudRates = [921600, 115200, 230400, 460800];
-const flashSizes = {
-    "512KB": 0x00,
-    "256KB": 0x10,
-    "1MB": 0x20,
-    "2MB": 0x30,
-    "4MB": 0x40,
-    "2MB-c1": 0x50,
-    "4MB-c1": 0x60,
-    "8MB": 0x80,
-    "16MB": 0x90,
-};
-
 
 const bufferSize = 512;
 const colors = ['#00a7e9', '#f89521', '#be1e2d'];
@@ -127,7 +114,6 @@ async function disconnect() {
  * Reads data from the input stream and places it in the inputBuffer
  */
 async function readLoop() {
-  logMsg("Readloop started")
   reader = port.readable.getReader();
   while (true) {
     const { value, done } = await reader.read();
@@ -257,12 +243,16 @@ async function clickConnect() {
       toggleUIToolbar(true);
       appDiv.classList.add("connected");
       let baud = parseInt(baudRate.value);
-      if (baudRates.includes(baud) && baud != ESP_ROM_BAUD) {
-        await espTool.setBaudrate(baud);
-      }
       logMsg("Connected to " + await espTool.chipName());
       logMsg("MAC Address: " + formatMacAddr(espTool.macAddr()));
-      stubLoader = await espTool.runStub();
+      espTool = await espTool.runStub();
+      if (baud != ESP_ROM_BAUD) {
+        if (await espTool.chipType() == ESP32) {
+          logMsg("WARNING: ESP32 is having issues working at speeds faster than 115200. Continuing at 115200 for now...")
+        } else {
+          await changeBaudRate(baud);
+        }
+      }
     }
   } catch(e) {
     errorMsg(e);
@@ -315,7 +305,7 @@ async function clickErase() {
     try {
       logMsg("Erasing flash memory. Please wait...");
       let stamp = Date.now();
-      await stubLoader.eraseFlash();
+      await espTool.eraseFlash();
       logMsg("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
     } catch(e) {
       errorMsg(e);
@@ -361,8 +351,9 @@ async function clickProgram() {
     let contents = await readUploadedFileAsArrayBuffer(binfile);
     try {
       let offset = parseInt(offsets[file].value, 16);
-      await stubLoader.flashData(contents, offset, file);
+      await espTool.flashData(contents, offset, file);
       await sleep(100);
+      logMsg("To run the new firmware, please reset your device.");
     } catch(e) {
       errorMsg(e);
     }
@@ -376,7 +367,6 @@ async function clickProgram() {
   butErase.disabled = false;
   baudRate.disabled = false;
   butProgram.disabled = getValidFiles().length == 0;
-  logMsg("To run the new firmware, please reset your device.")
 }
 
 function getValidFiles() {
