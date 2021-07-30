@@ -944,7 +944,7 @@ class EspLoader {
     this.logMsg("Running stub...")
     await this.memFinish(stub['entry']);
 
-    let p = await this.readBuffer(100);
+    let p = await this.readBuffer(500);
     p = String.fromCharCode(...p);
 
     if (p != 'OHAI') {
