@@ -143,8 +143,9 @@ function debugMsg(...args) {
   function getStackTrace() {
     let stack = new Error().stack;
     stack = stack.split("\n").map(v => v.trim());
-    stack.shift();
-    stack.shift();
+    for (let i=0; i<3; i++) {
+        stack.shift();
+    }
 
     let trace = [];
     for (let line of stack) {
