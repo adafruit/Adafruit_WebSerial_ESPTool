@@ -143,8 +143,9 @@ function debugMsg(...args) {
   function getStackTrace() {
     let stack = new Error().stack;
     stack = stack.split("\n").map(v => v.trim());
-    stack.shift();
-    stack.shift();
+    for (let i=0; i<3; i++) {
+        stack.shift();
+    }
 
     let trace = [];
     for (let line of stack) {
@@ -460,7 +461,7 @@ function toggleUIConnected(connected) {
 function loadAllSettings() {
   // Load all saved settings or defaults
   autoscroll.checked = loadSetting('autoscroll', true);
-  baudRate.value = loadSetting('baudrate', 921600);
+  baudRate.value = loadSetting('baudrate', baudRates[0]);
   darkMode.checked = loadSetting('darkmode', false);
 }
 
