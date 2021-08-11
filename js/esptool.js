@@ -752,8 +752,10 @@ class EspLoader {
   async flashBegin(size=0, offset=0, encrypted=false) {
     let buffer;
     let flashWriteSize = this.getFlashWriteSize();
-    if ([ESP32, ESP32S2].includes(this._chipfamily)) {
-      await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
+    if (!this.IS_STUB) {
+        if ([ESP32, ESP32S2].includes(this._chipfamily)) {
+          await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
+        }
     }
     if (this._chipfamily == ESP32) {
       // We are hardcoded for 4MB flash on ESP32
