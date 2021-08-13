@@ -165,7 +165,7 @@ class EspLoader {
    * 0xdb is replaced with 0xdb 0xdd and 0xc0 is replaced with 0xdb 0xdc
    */
   slipEncode(buffer) {
-    let encoded = [];
+    let encoded = [0xC0];
     for (let byte of buffer) {
       if (byte == 0xDB) {
         encoded = encoded.concat([0xDB, 0xDD]);
@@ -175,6 +175,7 @@ class EspLoader {
         encoded.push(byte);
       }
     }
+    encoded.push(0xC0);
     return encoded;
   };
 
@@ -241,7 +242,7 @@ class EspLoader {
     if (this._chipfamily == ESP8266) {
       baseAddr = 0x3FF00050;
     } else if (this._chipfamily == ESP32) {
-      baseAddr = 0x6001A000;
+      baseAddr = 0x3FF5A000;
     } else if (this._chipfamily == ESP32S2) {
       baseAddr = 0x6001A000;
     } else {
@@ -258,10 +259,12 @@ class EspLoader {
    */
   async readRegister(reg) {
     if (this.debug) {
-      this.debugMsg("Reading Register", reg);
+      this.debugMsg("Reading from Register " + this.toHex(reg, 8));
     }
-    let packet = struct.pack("I", reg);
-    return (await this.checkCommand(ESP_READ_REG, packet))[0];
+    let packet = struct.pack("<I", reg);
+    await this.sendCommand(ESP_READ_REG, packet);
+    let [val, data] = await this.getResponse(ESP_READ_REG);
+    return val;
   };
 
   /**
@@ -270,10 +273,10 @@ class EspLoader {
    */
   async writeRegister(reg, value) {
     if (this.debug) {
-      this.debugMsg("Reading Register", reg);
+      this.debugMsg("Writing to Register " + this.toHex(reg, 8));
     }
-    let packet = struct.pack("I", reg);
-    return (await this.checkCommand(ESP_READ_REG, packet))[0];
+    let packet = struct.pack("<I", reg);
+    return (await this.checkCommand(ESP_WRITE_REG, packet))[0];
   };
 
   sleep(ms) {
@@ -295,7 +298,7 @@ class EspLoader {
   async detectChip() {
     let chipMagicValue = await this.readRegister(CHIP_DETECT_MAGIC_REG_ADDR);
 
-    // Loop through magicValues and i f the value matches, then the key is the chip ID
+    // Loop through magicValues and if the value matches, then the key is the chip ID
     for (const [key, value] of Object.entries(magicValues)) {
       if (chipMagicValue == value["magicVal"]) {
         return value["chipId"]
@@ -304,23 +307,22 @@ class EspLoader {
     throw("Unable to detect Chip");
   }
 
-
   /**
    * @name chipType
    * The specific name of the chip, e.g. ESP8266EX, to the best
    * of our ability to determine without a stub bootloader.
    */
   async chipName() {
-    await this.chipType();
+    let chipType = await this.chipType();
     await this._readEfuses();
 
-    if (await this.chipType() == ESP32) {
+    if (chipType == ESP32) {
       return "ESP32";
     }
-    if (await this.chipType() == ESP32S2) {
+    if (chipType == ESP32S2) {
       return "ESP32-S2";
     }
-    if (await this.chipType() == ESP8266) {
+    if (chipType == ESP8266) {
       if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
         return "ESP8285";
       }
@@ -371,7 +373,11 @@ class EspLoader {
         throw("Command failure error code " + this.toHex(status[1]));
       }
     }
-    return [value, data];
+
+    if (data.length > 0) {
+      return data;
+    }
+    return value;
   };
 
   /**
@@ -392,14 +398,10 @@ class EspLoader {
    * does not check response
    */
   async sendCommand(opcode, buffer, checksum=0) {
-    //this.debugMsg("Running Send Command");
-    inputBuffer = []; // Reset input buffer
-    let packet = [0xC0, 0x00];  // direction
-    packet.push(opcode);
-    packet = packet.concat(struct.pack("H", buffer.length));
-    packet = packet.concat(this.slipEncode(struct.pack("I", checksum)));
-    packet = packet.concat(this.slipEncode(buffer));
-    packet.push(0xC0);
+    //inputBuffer = []; // Reset input buffer
+    let packet = struct.pack("<BBHI", 0x00, opcode, buffer.length, checksum);
+    packet = packet.concat(buffer);
+    packet = this.slipEncode(packet);
     this.debugMsg("Writing " + packet.length + " byte" + (packet.length == 1 ? "" : "s") + ":", packet);
     await this.writeToStream(packet);
   };
@@ -568,7 +570,7 @@ class EspLoader {
             return [val, data];
         }
         if (data[0] != 0 && data[1] == ROM_INVALID_RECV_MSG) {
-          //inputBuffer = [];
+          inputBuffer = [];
           throw("Invalid (unsupported) command " + this.toHex(opcode));
         }
     }
@@ -648,6 +650,7 @@ class EspLoader {
    */
   async sync() {
     for (let i = 0; i < 5; i++) {
+      inputBuffer = []
       let response = await this._sync();
       if (response) {
         await this.sleep(100);
@@ -666,11 +669,11 @@ class EspLoader {
    */
   async _sync() {
     await this.sendCommand(ESP_SYNC, SYNC_PACKET);
-    let [reply, data] = await this.getResponse(ESP_SYNC, SYNC_TIMEOUT);
-    this.syncStubDetected = reply == 0;
+    let [val, data] = await this.getResponse(ESP_SYNC, SYNC_TIMEOUT);
+    this.syncStubDetected = (val === 0 ? 1 : 0);
     for (let i = 0; i < 8; i++) {
-      let [reply, data] = await this.getResponse(ESP_SYNC, SYNC_TIMEOUT);
-      this.syncStubDetected &= reply == 0;
+      let [val, data] = await this.getResponse(ESP_SYNC, SYNC_TIMEOUT);
+      this.syncStubDetected &= (val === 0 ? 1 : 0);
       if (data === null) {
         continue;
       }
