@@ -726,7 +726,7 @@ class EspLoader {
         block = Array.from(new Uint8Array(binaryData, position, filesize - position));
         block = block.concat(new Array(flashWriteSize - block.length).fill(0xFF));
       }
-      await this.flashBlock(block, seq, 2000);
+      await this.flashBlock(block, seq);
       seq += 1;
       written += block.length;
       position += flashWriteSize;
@@ -738,7 +738,7 @@ class EspLoader {
    * @name flashBlock
    * Send one block of data to program into SPI Flash memory
    */
-  async flashBlock(data, seq, timeout=100) {
+  async flashBlock(data, seq, timeout=DEFAULT_TIMEOUT) {
     await this.checkCommand(
       ESP_FLASH_DATA,
       struct.pack("<IIII", data.length, seq, 0, 0).concat(data),
