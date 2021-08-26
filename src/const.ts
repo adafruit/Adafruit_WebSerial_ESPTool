@@ -271,3 +271,10 @@ export const getUartDateRegAddress = (chipFamily: ChipFamily): number => {
       return -1;
   }
 };
+
+export class SlipReadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SlipReadError";
+  }
+}
