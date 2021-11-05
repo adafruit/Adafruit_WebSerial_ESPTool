@@ -150,10 +150,10 @@ export class ESPLoader extends EventTarget {
       }
     } catch (err) {
       console.error("Read loop got disconnected");
-      // Disconnected!
-      this.connected = false;
-      this.dispatchEvent(new Event("disconnect"));
     }
+    // Disconnected!
+    this.connected = false;
+    this.dispatchEvent(new Event("disconnect"));
     this.logger.debug("Finished read loop");
   }
 
@@ -1148,11 +1148,14 @@ export class ESPLoader extends EventTarget {
       await this._parent.disconnect();
       return;
     }
-    if (this._reader) {
-      await this._reader.cancel();
-    }
     await this.port.writable!.getWriter().close();
-    await this.port.close();
+    await new Promise((resolve) => {
+      if (!this._reader) {
+        resolve(undefined);
+      }
+      this.addEventListener("disconnect", resolve, { once: true });
+      this._reader!.cancel();
+    });
     this.connected = false;
   }
 }

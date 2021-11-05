@@ -11,6 +11,7 @@ This project is used by the [ESP Web Tools](https://github.com/esphome/esp-web-t
 - Clone this repository.
 - Install dependencies with `npm`
 - Run `script/develop`
+- Open http://localhost:5004/
 
 ## Fork
 
