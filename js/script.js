@@ -35,11 +35,13 @@ let currentBoard;
 let buttonState = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
-  let debug = false;
+  let debug = 0;
   var getParams = {}
   location.search.substr(1).split("&").forEach(function(item) {getParams[item.split("=")[0]] = item.split("=")[1]})
   if (getParams["debug"] !== undefined) {
-    debug = getParams["debug"] == "1" || getParams["debug"].toLowerCase() == "true";
+    if (getParams["debug"] == "1" || getParams["debug"] == "2") {
+      debug = parseInt(getParams["debug"]);
+    }
   }
 
   espTool = new EspLoader({
@@ -78,6 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAllSettings();
   updateTheme();
   logMsg("Adafruit WebSerial ESPTool loaded.");
+  if (debug) {
+    logMsg("Debugging Level " + debug + " Enabled.");
+  }
 });
 
 /**
@@ -146,7 +151,7 @@ function logMsg(text) {
   }
 }
 
-function debugMsg(...args) {
+function debugMsg(debugLevel, ...args) {
   function getStackTrace() {
     let stack = new Error().stack;
     stack = stack.split("\n").map(v => v.trim());
@@ -165,18 +170,24 @@ function debugMsg(...args) {
 
     return trace;
   }
-
+  if (debugLevel > espTool.debug) {
+    return;
+  }
   let stack = getStackTrace();
   stack.shift();
   let top = stack.shift();
   let prefix = '<span class="debug-function">[' + top.func + ":" + top.pos + ']</span> ';
   for (let arg of args) {
-    if (typeof arg == "string") {
+    if (arg === undefined) {
+      logMsg(prefix + "undefined");
+    } else if (arg === null) {
+      logMsg(prefix + "null");
+    } else if (typeof arg == "string") {
       logMsg(prefix + arg);
     } else if (typeof arg == "number") {
       logMsg(prefix + arg);
     } else if (typeof arg == "boolean") {
-      logMsg(prefix + arg ? "true" : "false");
+      logMsg(prefix + (arg ? "true" : "false"));
     } else if (Array.isArray(arg)) {
       logMsg(prefix + "[" + arg.map(value => espTool.toHex(value)).join(", ") + "]");
     } else if (typeof arg == "object" && (arg instanceof Uint8Array)) {
