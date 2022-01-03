@@ -31,20 +31,6 @@ export const ESP32_FLASH_SIZES = {
   "64MB": 0x1a,
 };
 
-export const FLASH_MODES = {
-  qio: 0,
-  qout: 1,
-  dio: 2,
-  dout: 3,
-};
-
-export const FLASH_FREQUENCIES = {
-  "40m": 0,
-  "26m": 1,
-  "20m": 2,
-  "80m": 0xf,
-};
-
 export const DETECTED_FLASH_SIZES = {
   0x12: "256KB",
   0x13: "512KB",
@@ -57,28 +43,12 @@ export const DETECTED_FLASH_SIZES = {
   0x1a: "64MB",
 };
 
-export const getFlashSizes = (chipFamily: ChipFamily) => {
-  switch (chipFamily) {
-    case CHIP_FAMILY_ESP32:
-      return ESP32_FLASH_SIZES;
-    case CHIP_FAMILY_ESP32S2:
-      return ESP32_FLASH_SIZES;
-    case CHIP_FAMILY_ESP8266:
-      return FLASH_SIZES;
-    case CHIP_FAMILY_ESP32C3:
-      return ESP32_FLASH_SIZES;
-    default:
-      return FLASH_SIZES;
-  }
-};
-
 export const FLASH_WRITE_SIZE = 0x400;
 export const STUB_FLASH_WRITE_SIZE = 0x4000;
 export const FLASH_SECTOR_SIZE = 0x1000; // Flash sector size, minimum unit of erase.
 export const ESP_ROM_BAUD = 115200;
 export const ESP32_BOOTLOADER_FLASH_OFFSET = 0x1000;
 export const BOOTLOADER_FLASH_OFFSET = 0x0;
-export const ESP_IMAGE_MAGIC = 0xe9;
 
 export const ESP32_SPI_REG_BASE = 0x3ff42000;
 export const ESP32_SPI_USR_OFFS = 0x1c;

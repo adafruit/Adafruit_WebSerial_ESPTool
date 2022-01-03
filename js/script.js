@@ -174,6 +174,7 @@ function formatMacAddr(macAddr) {
 async function clickConnect() {
   if (espStub) {
     await espStub.disconnect();
+    await espStub.port.close();
     toggleUIConnected(false);
     espStub = undefined;
     return;

@@ -37,10 +37,6 @@ import {
   ESP_FLASH_DEFL_END,
   ESP32_BOOTLOADER_FLASH_OFFSET,
   BOOTLOADER_FLASH_OFFSET,
-  ESP_IMAGE_MAGIC,
-  getFlashSizes,
-  FLASH_FREQUENCIES,
-  FLASH_MODES,
   getSpiFlashAddresses,
   SpiFlashAddresses,
   getUartDateRegAddress,
@@ -546,7 +542,20 @@ export class ESPLoader extends EventTarget {
     offset = 0,
     compress = false
   ) {
-    this.updateImageFlashParams(offset, binaryData);
+    if (binaryData.byteLength >= 8) {
+      // unpack the (potential) image header
+      var header = Array.from(new Uint8Array(binaryData, 0, 4));
+      let headerMagic = header[0];
+      let headerFlashMode = header[2];
+      let heatherFlashSizeFreq = header[3];
+
+      this.logger.debug(
+        `Image header, Magic=${toHex(headerMagic)}, FlashMode=${toHex(
+          headerFlashMode
+        )}, FlashSizeFreq=${toHex(heatherFlashSizeFreq)}`
+      );
+    }
+
     let uncompressedFilesize = binaryData.byteLength;
     let compressedFilesize = 0;
 
@@ -764,83 +773,6 @@ export class ESPLoader extends EventTarget {
       return ESP32_BOOTLOADER_FLASH_OFFSET;
     }
     return BOOTLOADER_FLASH_OFFSET;
-  }
-
-  updateImageFlashParams(offset: number, image: ArrayBuffer) {
-    // Modify the flash mode & size bytes if this looks like an executable bootloader image
-    if (image.byteLength < 8) {
-      return image; //# not long enough to be a bootloader image
-    }
-
-    // unpack the (potential) image header
-
-    var header = Array.from(new Uint8Array(image, 0, 4));
-    let headerMagic = header[0];
-    let headerFlashMode = header[2];
-    let heatherFlashSizeFreq = header[3];
-
-    this.logger.debug(
-      `Image header, Magic=${toHex(headerMagic)}, FlashMode=${toHex(
-        headerFlashMode
-      )}, FlashSizeFreq=${toHex(heatherFlashSizeFreq)}`
-    );
-
-    if (offset != this.getBootloaderOffset()) {
-      return image; // not flashing bootloader offset, so don't modify this image
-    }
-
-    // easy check if this is an image: does it start with a magic byte?
-    if (headerMagic != ESP_IMAGE_MAGIC) {
-      this.logger.log(
-        "Warning: Image file at %s doesn't look like an image file, so not changing any flash settings.",
-        toHex(offset, 4)
-      );
-      return image;
-    }
-
-    // make sure this really is an image, and not just data that
-    // starts with esp.ESP_IMAGE_MAGIC (mostly a problem for encrypted
-    // images that happen to start with a magic byte
-
-    // TODO Implement this test from esptool.py
-    /*
-    try:
-        test_image = esp.BOOTLOADER_IMAGE(io.BytesIO(image))
-        test_image.verify()
-    except Exception:
-        print("Warning: Image file at 0x%x is not a valid %s image, so not changing any flash settings." % (address, esp.CHIP_NAME))
-        return image
-    */
-
-    this.logger.log("Image being flashed is a bootloader");
-
-    // For now we always select dio, a common value supported by many flash chips and ESP boards
-    let flashMode = FLASH_MODES["dio"];
-    // For now we always select 40m, a common value supported by many flash chips and ESP boards
-    let flashFreq = FLASH_FREQUENCIES["40m"];
-    let flashSize = getFlashSizes(this.getChipFamily())[
-      this.flashSize ? this.flashSize : "4MB"
-    ]; // If size was autodetected we use it otherwise we default to 4MB
-    let flashParams = pack("BB", flashMode, flashSize + flashFreq);
-    let imageFlashParams = new Uint8Array(image, 2, 2);
-
-    if (
-      flashParams[0] != imageFlashParams[0] ||
-      flashParams[1] != imageFlashParams[1]
-    ) {
-      imageFlashParams[0] = flashParams[0];
-      imageFlashParams[1] = flashParams[1];
-
-      this.logger.log(
-        `Patching Flash parameters header bytes to ${toHex(
-          flashParams[0],
-          2
-        )} ${toHex(flashParams[1], 2)}`
-      );
-    } else {
-      this.logger.log("Flash parameters header did not need patching.");
-    }
-    return image;
   }
 
   async flashId() {
