@@ -127,6 +127,17 @@ class struct {
 
         return data;
     };
+
+    static calcsize(format) {
+        let size = 0;
+        for (let i = 0; i < format.length; i++) {
+            if (format[i] != "<" && format[i] != ">") {
+                size += struct.lut[format[i]].bytes;
+            }
+        }
+
+        return size;
+    }
 }
 
 String.prototype.replaceAt = function(index, character) {
