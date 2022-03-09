@@ -605,7 +605,7 @@ class EspLoader {
         try {
           packet = await this.readPacket();
         } catch(e) {
-          this.logMsg("Timed out after " + this.readTimeout + " milliseconds");
+          this.debugMsg(1, "Timed out after " + this.readTimeout + " milliseconds");
           return [null, null];
         }
 
@@ -641,7 +641,7 @@ class EspLoader {
     try {
       packet = await this.readPacket();
     } catch(e) {
-      this.logMsg("Timed out after " + this.readTimeout + " milliseconds");
+      this.debugMsg(1, "Timed out after " + this.readTimeout + " milliseconds");
       return null;
     }
 
@@ -701,11 +701,13 @@ class EspLoader {
    * ESP ROM bootloader, we will retry a few times
    */
   async sync() {
+    this.logMsg("Performing sync...")
     for (let i = 0; i < 5; i++) {
       inputBuffer = []
       let response = await this._sync();
       if (response) {
         await this.sleep(100);
+        this.logMsg("Successfully synced.")
         return true;
       }
       await this.sleep(100);
