@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     debug: debug})
   butConnect.addEventListener('click', () => {
     clickConnect().catch(async (e) => {
-      errorMsg(e.message);
+      errorHandle(e);
       disconnect();
       toggleUIConnected(false);
     });
@@ -181,7 +181,7 @@ function debugMsg(debugLevel, ...args) {
     if (arg === undefined) {
       logMsg(prefix + "undefined");
     } else if (arg === null) {
-      logMsg(prefix + "null");
+      logMsg(prefix + "null");      
     } else if (typeof arg == "string") {
       logMsg(prefix + arg);
     } else if (typeof arg == "number") {
@@ -200,9 +200,18 @@ function debugMsg(debugLevel, ...args) {
   }
 }
 
+function errorHandle(error) {
+  console.error(error);
+  if (error.message) {
+    errorMsg(error.message)
+  } else {
+    errorMsg(error);
+  }
+}
+
 function errorMsg(text) {
   logMsg('<span class="error-message">Error:</span> ' + text);
-  console.log(text);
+  console.error(text);
 }
 
 function formatMacAddr(macAddr) {
@@ -266,15 +275,16 @@ async function clickConnect() {
       logMsg("MAC Address: " + formatMacAddr(espTool.macAddr()));
       espTool = await espTool.runStub();
       if (baud != ESP_ROM_BAUD) {
-        if (await espTool.chipType() == ESP32) {
-          logMsg("WARNING: ESP32 is having issues working at speeds faster than 115200. Continuing at 115200 for now...")
+        let chipType = await espTool.chipType();
+        if ([ESP32, ESP32C3].includes(chipType)) {
+          logMsg("WARNING: ESP32 and ESP32C3 are having issues working at speeds faster than 115200. Continuing at 115200 for now...")
         } else {
           await changeBaudRate(baud);
         }
       }
     }
   } catch(e) {
-    errorMsg(e);
+    errorHandle(e);
     await disconnect();
     toggleUIConnected(false);
     return;
@@ -327,7 +337,7 @@ async function clickErase() {
       await espTool.eraseFlash();
       logMsg("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
     } catch(e) {
-      errorMsg(e);
+      errorHandle(e);
     } finally {
       butErase.disabled = false;
       baudRate.disabled = false;
@@ -374,7 +384,7 @@ async function clickProgram() {
       await sleep(100);
       logMsg("To run the new firmware, please reset your device.");
     } catch(e) {
-      errorMsg(e);
+      errorHandle(e);
     }
   }
   for (let i=0; i< 4; i++) {
