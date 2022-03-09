@@ -166,7 +166,7 @@ const supportedChips = {
       "spiMosiDlenOffs": 0x24,
       "spiMisoDlenOffs": 0x28,
       "spiW0Offs": 0x58,
-    },  
+    },
 }
 
 class EspLoader {
@@ -340,7 +340,7 @@ class EspLoader {
     }
     return this._chipfamily;
   };
-  
+
   getChipInfo(chipId) {
     // Loop through supported chips and return the data for that chip
     for (const [key, value] of Object.entries(supportedChips)) {
@@ -348,10 +348,9 @@ class EspLoader {
         return value;
       }
     }
-    
+
     throw("Chip Id is not Supported")
   }
-
 
   async detectChip() {
     let chipMagicValue = await this.readRegister(CHIP_DETECT_MAGIC_REG_ADDR);
@@ -371,7 +370,7 @@ class EspLoader {
    * of our ability to determine without a stub bootloader.
    */
   async chipName() {
-    let chipType = await this.chipType();  
+    let chipType = await this.chipType();
     let chipInfo = this.getChipInfo(chipType);
     if (chipType == ESP8266) {
       await this._readEfuses();
@@ -788,19 +787,6 @@ class EspLoader {
   };
 
   /**
-   * @name flashBlock
-   * Send one block of data to program into SPI Flash memory
-   */
-  async flashBlock(data, seq, timeout=DEFAULT_TIMEOUT) {
-    await this.checkCommand(
-      ESP_FLASH_DATA,
-      struct.pack("<IIII", data.length, seq, 0, 0).concat(data),
-      this.checksum(data),
-      timeout,
-    );
-  };
-
-  /**
    * @name flashDeflBegin
    * Start downloading compressed data to Flash (performs an erase)
    *     Returns number of blocks (size FLASH_WRITE_SIZE) to write.
@@ -809,7 +795,7 @@ class EspLoader {
     let params;
     let flashWriteSize = this.getFlashWriteSize();
     let numBlocks = Math.floor((compsize + flashWriteSize - 1) / flashWriteSize);
-    let eraselocks = Math.floor((size + flashWriteSize - 1) / flashWriteSize);
+    let eraseBlocks = Math.floor((size + flashWriteSize - 1) / flashWriteSize);
 
     let stamp = Date.now()
     let writeSize, timeout;
@@ -817,7 +803,7 @@ class EspLoader {
         writeSize = size  // stub expects number of bytes here, manages erasing internally
         timeout = DEFAULT_TIMEOUT
     } else {
-        writeSize = erase_blocks * self.FLASH_WRITE_SIZE  // ROM expects rounded up to erase block size
+        writeSize = eraseBlocks * self.FLASH_WRITE_SIZE  // ROM expects rounded up to erase block size
         timeout = this.timeoutPerMb(ERASE_REGION_TIMEOUT_PER_MB, writeSize);
     }
     this.logMsg("Compressed " + size + " bytes to " + compsize + "...")
@@ -827,16 +813,16 @@ class EspLoader {
     if ([ESP32S2, ESP32C3].includes(this._chipfamily) && !this.IS_STUB) {
         params = params.concat(struct.pack("<I", 0));
     }
-    
+
     await this.checkCommand(ESP_FLASH_DEFL_BEGIN, params, 0, timeout);
-    
+
     if (size != 0 && !this.IS_STUB) {
         // (stub erases as it writes, but ROM loaders erase on begin)
         this.logMsg("Took " + (Date.now() - stamp) + "ms to erase flash block");
     }
     return numBlocks;
   }
-  
+
   /**
    * @name flashDeflBlock
    * Write block to flash, send compressed
@@ -850,7 +836,6 @@ class EspLoader {
     );
   };  
 
-  
   /**
    * @name flashDeflFinish
    * Write block to flash, send compressed
@@ -864,7 +849,7 @@ class EspLoader {
     let pkt = struct.pack('<I', reboot ? 0 : 1);
     await this.checkCommand(ESP_FLASH_DEFL_END, pkt);
   };
-  
+
   /**
    * @name flashBegin
    * Prepare for flashing by attaching SPI chip and erasing the
@@ -878,11 +863,8 @@ class EspLoader {
           await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
         }
     }
-    let flashId = await this.flashId();
-    console.log(flashId);
-    
-    
-    
+    //let flashId = await this.flashId();
+
     if (this._chipfamily == ESP32) {
       // We are hardcoded for 4MB flash on ESP32
       buffer = struct.pack(
@@ -919,6 +901,19 @@ class EspLoader {
     return numBlocks;
   };
 
+  /**
+   * @name flashBlock
+   * Send one block of data to program into SPI Flash memory
+   */
+   async flashBlock(data, seq, timeout=DEFAULT_TIMEOUT) {
+    await this.checkCommand(
+      ESP_FLASH_DATA,
+      struct.pack("<IIII", data.length, seq, 0, 0).concat(data),
+      this.checksum(data),
+      timeout,
+    );
+  };
+
   async flashFinish() {
     let buffer = struct.pack('<I', 1);
     await this.checkCommand(ESP_FLASH_END, buffer);
@@ -937,7 +932,7 @@ class EspLoader {
   async runSpiflashCommand(spiflashCommand, data=[], readBits=0, addr=null, addrLen=0, dummyLen=0) {
         let chipType = await this.chipType();
         let chipInfo = this.getChipInfo(chipType);
-      
+
         // SPI_USR register flags
         const SPI_USR_COMMAND = (1 << 31)
         const SPI_USR_ADDR    = (1 << 30)
@@ -1065,13 +1060,13 @@ class EspLoader {
         return status
 
    }
-  
+
   async flashId() {
     const SPIFLASH_RDID = 0x9F;
 
     return await this.runSpiflashCommand(SPIFLASH_RDID, [], 24);
   }
-  
+
   /**
    * @name getEraseSize
    * Calculate an erase size given a specific size in bytes.

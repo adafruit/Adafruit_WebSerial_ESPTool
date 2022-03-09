@@ -181,7 +181,7 @@ function debugMsg(debugLevel, ...args) {
     if (arg === undefined) {
       logMsg(prefix + "undefined");
     } else if (arg === null) {
-      logMsg(prefix + "null");      
+      logMsg(prefix + "null");
     } else if (typeof arg == "string") {
       logMsg(prefix + arg);
     } else if (typeof arg == "number") {
