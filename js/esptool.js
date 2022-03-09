@@ -53,9 +53,7 @@ const CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000;
 const ESP8266 = 0x8266;
 const ESP32 = 0x32;
 const ESP32S2 = 0x3252;
-const ESP32_DATAREGVALUE = 0x15122500;
-const ESP8266_DATAREGVALUE = 0x00062000;
-const ESP32S2_DATAREGVALUE = 0x500;
+const ESP32C3 = 0x32C3;
 
 // Commands supported by ESP8266 ROM bootloader
 const ESP_FLASH_BEGIN = 0x02;
@@ -108,17 +106,73 @@ const ERASE_REGION_TIMEOUT_PER_MB = 30000;     // timeout (per megabyte) for era
 const MEM_END_ROM_TIMEOUT = 500;
 
 
-const magicValues = {
-    "ESP8266": { "chipId": ESP8266, "magicVal": 0xfff0c101},
-    "ESP32":  { "chipId": ESP32, "magicVal": 0x00f01d83},
-    "ESP32S2": { "chipId": ESP32S2, "magicVal": 0x000007c6}
+const supportedChips = {
+    "ESP8266": {
+      "chipId": ESP8266,
+      "chipName": "ESP8266EX",
+      "magicVal": [0xfff0c101],
+      "baseFuseAddr": 0x3FF00050,
+      "macFuseAddr": 0x3FF00050,
+      "stubFile": "esp8266",
+      "spiRegBase": 0x60000200,
+      "spiUsrOffs": 0x1c,
+      "spiUsr1Offs": 0x20,
+      "spiUsr2Offs": 0x24,
+      "spiMosiDlenOffs": null,
+      "spiMisoDlenOffs": null,
+      "spiW0Offs": 0x40,
+    },
+    "ESP32": {
+      "chipId": ESP32,
+      "chipName": "ESP32",
+      "magicVal": [0x00f01d83],
+      "baseFuseAddr": 0x3FF5A000,
+      "macFuseAddr": 0x3FF5A000,
+      "stubFile": "esp32",
+      "spiRegBase": 0x3ff42000,
+      "spiUsrOffs": 0x1c,
+      "spiUsr1Offs": 0x20,
+      "spiUsr2Offs": 0x24,
+      "spiMosiDlenOffs": 0x28,
+      "spiMisoDlenOffs": 0x2c,
+      "spiW0Offs": 0x80,
+    },
+    "ESP32S2": {
+      "chipId": ESP32S2,
+      "chipName": "ESP32-S2",
+      "magicVal": [0x000007c6],
+      "baseFuseAddr": 0x6001A000,
+      "macFuseAddr": 0x6001A000,
+      "stubFile": "esp32s2",
+      "spiRegBase": 0x3f402000,
+      "spiUsrOffs": 0x18,
+      "spiUsr1Offs": 0x1c,
+      "spiUsr2Offs": 0x20,
+      "spiMosiDlenOffs": 0x24,
+      "spiMisoDlenOffs": 0x28,
+      "spiW0Offs": 0x58,
+    },
+    "ESP32C3": {
+      "chipId": ESP32C3,
+      "chipName": "ESP32-C3",
+      "magicVal": [0x6921506f, 0x1b31506f],
+      "baseFuseAddr": 0x60008800,
+      "macFuseAddr": 0x60008800 + 0x044,
+      "stubFile": "esp32c3",
+      "spiRegBase": 0x60002000,
+      "spiUsrOffs": 0x18,
+      "spiUsr1Offs": 0x1c,
+      "spiUsr2Offs": 0x20,
+      "spiMosiDlenOffs": 0x24,
+      "spiMisoDlenOffs": 0x28,
+      "spiW0Offs": 0x58,
+    },
 }
-
 
 class EspLoader {
   constructor(params) {
     this._chipfamily = null;
-    this.readTimeout = 3000;  // Arbitrary number for now. This should be set more dynamically in the sendCommand function
+    this.readTimeout = 3000;  // Arbitrary number for now. This should be set more dynamically in the command() function
     this._efuses = new Array(4).fill(0);
     this._flashsize = 4 * 1024 * 1024;
     if (this.isFunction(params.updateProgress)) {
@@ -132,11 +186,8 @@ class EspLoader {
     } else {
       this.logMsg = console.log
     }
-    this.debug = false;
+    this.debug = params.debug;
     if (this.isFunction(params.debugMsg)) {
-      if (params.debug !== false) {
-        this.debug = true;
-      }
       this._debugMsg = params.debugMsg
     } else {
       this._debugMsg = this.logMsg()
@@ -207,20 +258,20 @@ class EspLoader {
       macAddr[3] = (mac1 >> 8) & 0xFF;
       macAddr[4] = mac1 & 0xFF;
       macAddr[5] = (mac0 >> 24) & 0xFF;
-    } else if (this._chipfamily == ESP32) {
+    } else if (this._chipfamily == ESP32 || this._chipfamily == ESP32S2) {
       macAddr[0] = mac2 >> 8 & 0xFF;
       macAddr[1] = mac2 & 0xFF;
       macAddr[2] = mac1 >> 24 & 0xFF;
       macAddr[3] = mac1 >> 16 & 0xFF;
       macAddr[4] = mac1 >> 8 & 0xFF;
       macAddr[5] = mac1 & 0xFF;
-    } else if (this._chipfamily == ESP32S2) {
-      macAddr[0] = mac2 >> 8 & 0xFF;
-      macAddr[1] = mac2 & 0xFF;
-      macAddr[2] = mac1 >> 24 & 0xFF;
-      macAddr[3] = mac1 >> 16 & 0xFF;
-      macAddr[4] = mac1 >> 8 & 0xFF;
-      macAddr[5] = mac1 & 0xFF;
+    } else if (this._chipfamily == ESP32C3) {
+      macAddr[0] = mac1 >> 8 & 0xFF;
+      macAddr[1] = mac1 & 0xFF;
+      macAddr[2] = mac0 >> 24 & 0xFF;
+      macAddr[3] = mac0 >> 16 & 0xFF;
+      macAddr[4] = mac0 >> 8 & 0xFF;
+      macAddr[5] = mac0 & 0xFF;
     } else {
       throw("Unknown chip family")
     }
@@ -238,18 +289,10 @@ class EspLoader {
    * Read the OTP data for this chip and store into this.efuses array
    */
   async _readEfuses() {
-    let baseAddr
-    if (this._chipfamily == ESP8266) {
-      baseAddr = 0x3FF00050;
-    } else if (this._chipfamily == ESP32) {
-      baseAddr = 0x3FF5A000;
-    } else if (this._chipfamily == ESP32S2) {
-      baseAddr = 0x6001A000;
-    } else {
-      throw("Don't know what chip this is");
-    }
+    let chipType = await this.chipType();  
+    let chipInfo = this.getChipInfo(chipType);
     for (let i = 0; i < 4; i++) {
-      this._efuses[i] = await this.readRegister(baseAddr + 4 * i);
+      this._efuses[i] = await this.readRegister(chipInfo.macFuseAddr + 4 * i);
     }
   };
 
@@ -262,7 +305,7 @@ class EspLoader {
       this.debugMsg(1, "Reading from Register " + this.toHex(reg, 8));
     }
     let packet = struct.pack("<I", reg);
-    await this.sendCommand(ESP_READ_REG, packet);
+    await this.command(ESP_READ_REG, packet);
     let [val, data] = await this.getResponse(ESP_READ_REG);
     return val;
   };
@@ -271,12 +314,16 @@ class EspLoader {
    * @name writeRegister
    * Write to a register within the ESP chip RAM, returns a 4-element list
    */
-  async writeRegister(reg, value) {
+  async writeRegister(addr, value, mask=0xFFFFFFFF, delayUs=0, delayAfterUs=0) {
     if (this.debug) {
-      this.debugMsg(1, "Writing to Register " + this.toHex(reg, 8));
+      this.debugMsg(1, "Writing to Register " + this.toHex(addr, 8));
     }
-    let packet = struct.pack("<I", reg);
-    return (await this.checkCommand(ESP_WRITE_REG, packet))[0];
+    let packet = struct.pack("<IIII", addr, value, mask, delayUs);
+    if (delayAfterUs > 0) {
+      packet = packet.concat(struct.pack('<IIII', UART_DATE_REG_ADDR, 0, 0, delayAfterUs))
+    }
+    let returnVal = await this.checkCommand(ESP_WRITE_REG, packet);
+    return returnVal;
   };
 
   sleep(ms) {
@@ -294,13 +341,23 @@ class EspLoader {
     return this._chipfamily;
   };
 
+  getChipInfo(chipId) {
+    // Loop through supported chips and return the data for that chip
+    for (const [key, value] of Object.entries(supportedChips)) {
+      if (value["chipId"] == chipId) {
+        return value;
+      }
+    }
+
+    throw("Chip Id is not Supported")
+  }
 
   async detectChip() {
     let chipMagicValue = await this.readRegister(CHIP_DETECT_MAGIC_REG_ADDR);
 
     // Loop through magicValues and if the value matches, then the key is the chip ID
-    for (const [key, value] of Object.entries(magicValues)) {
-      if (chipMagicValue == value["magicVal"]) {
+    for (const [key, value] of Object.entries(supportedChips)) {
+      if (value["magicVal"].includes(chipMagicValue)) {
         return value["chipId"]
       }
     }
@@ -314,21 +371,14 @@ class EspLoader {
    */
   async chipName() {
     let chipType = await this.chipType();
-    await this._readEfuses();
-
-    if (chipType == ESP32) {
-      return "ESP32";
-    }
-    if (chipType == ESP32S2) {
-      return "ESP32-S2";
-    }
+    let chipInfo = this.getChipInfo(chipType);
     if (chipType == ESP8266) {
+      await this._readEfuses();
       if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
         return "ESP8285";
       }
-      return "ESP8266EX";
     }
-    return null;
+    return chipInfo.chipName;
   };
 
   /**
@@ -339,7 +389,7 @@ class EspLoader {
    */
   async checkCommand(opcode, buffer, checksum=0, timeout=DEFAULT_TIMEOUT) {
     timeout = Math.min(timeout, MAX_TIMEOUT);
-    await this.sendCommand(opcode, buffer, checksum);
+    await this.command(opcode, buffer, checksum);
     let [value, data] = await this.getResponse(opcode, timeout);
     let statusLen;
     if (data !== null) {
@@ -347,7 +397,7 @@ class EspLoader {
           statusLen = 2;
       } else if (this._chipfamily == ESP8266) {
           statusLen = 2;
-      } else if ([ESP32, ESP32S2].includes(this._chipfamily)) {
+      } else if ([ESP32, ESP32S2, ESP32C3].includes(this._chipfamily)) {
           statusLen = 4;
       } else {
           if ([2, 4].includes(data.length)) {
@@ -393,11 +443,11 @@ class EspLoader {
   };
 
   /**
-   * @name sendCommand
+   * @name command
    * Send a slip-encoded, checksummed command over the UART,
    * does not check response
    */
-  async sendCommand(opcode, buffer, checksum=0) {
+  async command(opcode, buffer, checksum=0) {
     //inputBuffer = []; // Reset input buffer
     let packet = struct.pack("<BBHI", 0x00, opcode, buffer.length, checksum);
     packet = packet.concat(buffer);
@@ -487,6 +537,7 @@ class EspLoader {
     let partialPacket = null;
     let inEscape = false;
     let readBytes = [];
+    this.debugMsg(2, "Read Timeout", this.readTimeout)
     while (true) {
         let stamp = Date.now();
         readBytes = [];
@@ -501,6 +552,7 @@ class EspLoader {
         if (readBytes.length == 0) {
             let waitingFor = partialPacket === null ? "header" : "content";
             this.debugMsg(1, "Timed out waiting for packet " + waitingFor);
+            console.error("Timed out waiting for packet " + waitingFor)
             throw new SlipReadError("Timed out waiting for packet " + waitingFor);
         }
         this.debugMsg(2, "Read " + readBytes.length + " bytes: " + this.hexFormatter(readBytes));
@@ -553,7 +605,7 @@ class EspLoader {
         try {
           packet = await this.readPacket();
         } catch(e) {
-          this.logMsg("Timed out after " + this.readTimeout + " milliseconds");
+          this.debugMsg(1, "Timed out after " + this.readTimeout + " milliseconds");
           return [null, null];
         }
 
@@ -589,7 +641,7 @@ class EspLoader {
     try {
       packet = await this.readPacket();
     } catch(e) {
-      this.logMsg("Timed out after " + this.readTimeout + " milliseconds");
+      this.debugMsg(1, "Timed out after " + this.readTimeout + " milliseconds");
       return null;
     }
 
@@ -649,11 +701,13 @@ class EspLoader {
    * ESP ROM bootloader, we will retry a few times
    */
   async sync() {
+    this.logMsg("Performing sync...")
     for (let i = 0; i < 5; i++) {
       inputBuffer = []
       let response = await this._sync();
       if (response) {
         await this.sleep(100);
+        this.logMsg("Successfully synced.")
         return true;
       }
       await this.sleep(100);
@@ -668,7 +722,7 @@ class EspLoader {
    * any hardware resetting
    */
   async _sync() {
-    await this.sendCommand(ESP_SYNC, SYNC_PACKET);
+    await this.command(ESP_SYNC, SYNC_PACKET);
     let [val, data] = await this.getResponse(ESP_SYNC, SYNC_TIMEOUT);
     this.syncStubDetected = (val === 0 ? 1 : 0);
     for (let i = 0; i < 8; i++) {
@@ -735,16 +789,67 @@ class EspLoader {
   };
 
   /**
-   * @name flashBlock
-   * Send one block of data to program into SPI Flash memory
+   * @name flashDeflBegin
+   * Start downloading compressed data to Flash (performs an erase)
+   *     Returns number of blocks (size FLASH_WRITE_SIZE) to write.
    */
-  async flashBlock(data, seq, timeout=DEFAULT_TIMEOUT) {
+  async flashDeflBegin(size, compsize, offset) {
+    let params;
+    let flashWriteSize = this.getFlashWriteSize();
+    let numBlocks = Math.floor((compsize + flashWriteSize - 1) / flashWriteSize);
+    let eraseBlocks = Math.floor((size + flashWriteSize - 1) / flashWriteSize);
+
+    let stamp = Date.now()
+    let writeSize, timeout;
+    if (this.IS_STUB) {
+        writeSize = size  // stub expects number of bytes here, manages erasing internally
+        timeout = DEFAULT_TIMEOUT
+    } else {
+        writeSize = eraseBlocks * self.FLASH_WRITE_SIZE  // ROM expects rounded up to erase block size
+        timeout = this.timeoutPerMb(ERASE_REGION_TIMEOUT_PER_MB, writeSize);
+    }
+    this.logMsg("Compressed " + size + " bytes to " + compsize + "...")
+    params = struct.pack(
+        "<IIII", writeSize, numBlocks, flashWriteSize, offset
+    );
+    if ([ESP32S2, ESP32C3].includes(this._chipfamily) && !this.IS_STUB) {
+        params = params.concat(struct.pack("<I", 0));
+    }
+
+    await this.checkCommand(ESP_FLASH_DEFL_BEGIN, params, 0, timeout);
+
+    if (size != 0 && !this.IS_STUB) {
+        // (stub erases as it writes, but ROM loaders erase on begin)
+        this.logMsg("Took " + (Date.now() - stamp) + "ms to erase flash block");
+    }
+    return numBlocks;
+  }
+
+  /**
+   * @name flashDeflBlock
+   * Write block to flash, send compressed
+   */
+  async flashDeflBlock(data, seq, timeout=DEFAULT_TIMEOUT) {
     await this.checkCommand(
-      ESP_FLASH_DATA,
+      ESP_FLASH_DEFL_DATA,
       struct.pack("<IIII", data.length, seq, 0, 0).concat(data),
       this.checksum(data),
       timeout,
     );
+  };  
+
+  /**
+   * @name flashDeflFinish
+   * Write block to flash, send compressed
+   */
+  async flashDeflFinish(reboot=false) {
+    if (!reboot && !this.IS_STUB) {
+      // skip sending flash_finish to ROM loader, as this
+      // exits the bootloader. Stub doesn't do this.
+      return;
+    }
+    let pkt = struct.pack('<I', reboot ? 0 : 1);
+    await this.checkCommand(ESP_FLASH_DEFL_END, pkt);
   };
 
   /**
@@ -756,10 +861,12 @@ class EspLoader {
     let buffer;
     let flashWriteSize = this.getFlashWriteSize();
     if (!this.IS_STUB) {
-        if ([ESP32, ESP32S2].includes(this._chipfamily)) {
+        if ([ESP32, ESP32S2, ESP32C3].includes(this._chipfamily)) {
           await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
         }
     }
+    //let flashId = await this.flashId();
+
     if (this._chipfamily == ESP32) {
       // We are hardcoded for 4MB flash on ESP32
       buffer = struct.pack(
@@ -781,7 +888,7 @@ class EspLoader {
     buffer = struct.pack(
         "<IIII", eraseSize, numBlocks, flashWriteSize, offset
     );
-    if ([ESP32S2].includes(this._chipfamily) && !this.IS_STUB) {
+    if ([ESP32S2, ESP32C3].includes(this._chipfamily) && !this.IS_STUB) {
       buffer = buffer.concat(struct.pack(
         "<I", encrypted ? 1 : 0
       ));
@@ -796,10 +903,171 @@ class EspLoader {
     return numBlocks;
   };
 
+  /**
+   * @name flashBlock
+   * Send one block of data to program into SPI Flash memory
+   */
+   async flashBlock(data, seq, timeout=DEFAULT_TIMEOUT) {
+    await this.checkCommand(
+      ESP_FLASH_DATA,
+      struct.pack("<IIII", data.length, seq, 0, 0).concat(data),
+      this.checksum(data),
+      timeout,
+    );
+  };
+
   async flashFinish() {
     let buffer = struct.pack('<I', 1);
     await this.checkCommand(ESP_FLASH_END, buffer);
   };
+
+  /**
+   * @name runSpiflashCommand
+   * Run an arbitrary SPI flash command.
+   *    This function uses the "USR_COMMAND" functionality in the ESP
+   *    SPI hardware, rather than the precanned commands supported by
+   *    hardware. So the value of spiflash_command is an actual command
+   *    byte, sent over the wire.
+   *    After writing command byte, writes 'data' to MOSI and then
+   *    reads back 'read_bits' of reply on MISO. Result is a number.
+   */
+  async runSpiflashCommand(spiflashCommand, data=[], readBits=0, addr=null, addrLen=0, dummyLen=0) {
+        let chipType = await this.chipType();
+        let chipInfo = this.getChipInfo(chipType);
+
+        // SPI_USR register flags
+        const SPI_USR_COMMAND = (1 << 31)
+        const SPI_USR_ADDR    = (1 << 30)
+        const SPI_USR_DUMMY   = (1 << 29)
+        const SPI_USR_MISO    = (1 << 28)
+        const SPI_USR_MOSI    = (1 << 27)
+
+        // SPI registers, base address differs ESP32* vs 8266
+        const base = chipInfo.spiRegBase
+        const SPI_CMD_REG       = base + 0x00
+        const SPI_ADDR_REG      = base + 0x04
+        const SPI_USR_REG       = base + chipInfo.spiUsrOffs
+        const SPI_USR1_REG      = base + chipInfo.spiUsr1Offs
+        const SPI_USR2_REG      = base + chipInfo.spiUsr2Offs
+        const SPI_W0_REG        = base + chipInfo.spiW0Offs
+
+        // shift values
+        const SPI_USR2_COMMAND_LEN_SHIFT = 28
+        const SPI_USR_ADDR_LEN_SHIFT = 26
+
+        // SPI peripheral "command" bitmasks for SPI_CMD_REG
+        const SPI_CMD_USR  = (1 << 18);
+
+        let setDataLengths;
+        let flags;
+        //following two registers are ESP32 and later chips only
+        if (chipInfo.spiMosiDlenOffs != null) {
+            // ESP32 and later chips have a more sophisticated way to set up "user" commands
+            setDataLengths = async function(mosi_bits, miso_bits) {
+                const SPI_MOSI_DLEN_REG = base + chipInfo.spiMosiDlenOffs;
+                const SPI_MISO_DLEN_REG = base + chipInfo.spiMisoDlenOffs;
+                if (mosi_bits > 0) {
+                    await this.writeRegister(SPI_MOSI_DLEN_REG, mosi_bits - 1);
+                }
+                if (miso_bits > 0) {
+                    await this.writeRegister(SPI_MISO_DLEN_REG, miso_bits - 1);
+                }
+                flags = 0;
+                if (dummyLen > 0) {
+                  flags |= (dummyLen - 1);
+                }
+                if (addrLen > 0) {
+                  flags |= (addrLen - 1) << SPI_USR_ADDR_LEN_SHIFT;
+                }
+                if (flags) {
+                    await this.writeRegister(SPI_USR1_REG, flags);
+                }
+            }
+        } else {
+            setDataLengths = async function (mosi_bits, miso_bits) {
+                const SPI_DATA_LEN_REG = SPI_USR1_REG;
+                const SPI_MOSI_BITLEN_S = 17;
+                const SPI_MISO_BITLEN_S = 8;
+                let mosi_mask = (mosi_bits == 0) ? 0 : (mosi_bits - 1);
+                let miso_mask = (miso_bits == 0) ? 0 : (miso_bits - 1);
+                flags = (miso_mask << SPI_MISO_BITLEN_S) | (mosi_mask << SPI_MOSI_BITLEN_S);
+                if (dummyLen > 0) {
+                    flags |= (dummyLen - 1);
+                }
+                if (addrLen > 0) {
+                    flags |= (addrLen - 1) << SPI_USR_ADDR_LEN_SHIFT;
+                }
+                await this.writeRegister(SPI_DATA_LEN_REG, flags);
+            }
+        }
+        setDataLengths = setDataLengths.bind(this);
+        if (readBits > 32) {
+            throw FatalError("Reading more than 32 bits back from a SPI flash operation is unsupported")
+        }
+        if (data.length > 64) {
+            throw FatalError("Writing more than 64 bytes of data with one SPI command is unsupported")
+        }
+
+        let dataBits = data.length * 8
+        let old_spi_usr = await this.readRegister(SPI_USR_REG);
+        let old_spi_usr2 = await this.readRegister(SPI_USR2_REG);
+        flags = SPI_USR_COMMAND;
+        if (readBits > 0) {
+            flags |= SPI_USR_MISO;
+        }
+        if (dataBits > 0) {
+            flags |= SPI_USR_MOSI;
+        }
+        if (addrLen > 0) {
+            flags |= SPI_USR_ADDR;
+        }
+        if (dummyLen > 0) {
+            flags |= SPI_USR_DUMMY;
+        }
+        await setDataLengths(dataBits, readBits);
+        await this.writeRegister(SPI_USR_REG, flags)
+        await this.writeRegister(SPI_USR2_REG,
+                       (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflashCommand)
+        if (addr != null && addrLen > 0) {
+            await this.writeRegister(SPI_ADDR_REG, addr);
+        }
+        if (dataBits == 0) {
+            await this.writeRegister(SPI_W0_REG, 0)  // clear data register before we read it
+        } else {
+            data = data.concat(new Array(4 - data.length).fill(0));  // pad to 32-bit multiple
+            let words = struct.unpack("I" * Math.floor(data.length / 4), data);
+            let next_reg = SPI_W0_REG;
+            for (let word of words) {
+                await this.writeRegister(next_reg, word)
+                next_reg += 4;
+            }
+        }
+        await this.writeRegister(SPI_CMD_REG, SPI_CMD_USR)
+
+        let waitDone = async function() {
+            for (let i = 0; i < 10; i++) {
+                if ((await this.readRegister(SPI_CMD_REG) & SPI_CMD_USR) == 0) {
+                    return
+                }
+            }
+            throw FatalError("SPI command did not complete in time")
+        }
+        waitDone = waitDone.bind(this);
+        await waitDone();
+
+        let status = await this.readRegister(SPI_W0_REG);
+        // restore some SPI controller registers
+        await this.writeRegister(SPI_USR_REG, old_spi_usr);
+        await this.writeRegister(SPI_USR2_REG, old_spi_usr2);
+        return status
+
+   }
+
+  async flashId() {
+    const SPIFLASH_RDID = 0x9F;
+
+    return await this.runSpiflashCommand(SPIFLASH_RDID, [], 24);
+  }
 
   /**
    * @name getEraseSize
@@ -885,23 +1153,16 @@ class EspLoader {
   }
 
   async getStubCode() {
-    let response = await fetch('stubs/' + this.getStubFile() + '.json');
+    let chipType = await this.chipType();
+    let chipInfo = this.getChipInfo(chipType);
+
+    let response = await fetch('stubs/' + chipInfo.stubFile + '.json');
     let stubcode = await response.json();
 
     // Base64 decode the text and data
     stubcode.text = toByteArray(atob(stubcode.text));
     stubcode.data = toByteArray(atob(stubcode.data));
     return stubcode;
-  }
-
-  getStubFile() {
-    if (this._chipfamily == ESP32) {
-      return "esp32";
-    } else if (this._chipfamily == ESP32S2) {
-      return "esp32s2";
-    } else if (this._chipfamily == ESP8266) {
-      return "esp8266";
-    }
   }
 
   getStubLoaderClass() {
@@ -924,7 +1185,7 @@ class EspLoader {
 
     let ramBlock = ESP_RAM_BLOCK;
     // We're transferring over USB, right?
-    if ([ESP32S2].includes(this._chipfamily)) {
+    if ([ESP32S2, ESP32C3].includes(this._chipfamily)) {
       ramBlock = USB_RAM_BLOCK;
     }
 
@@ -1005,5 +1266,12 @@ class SlipReadError extends Error {
     constructor(message) {
         super(message);
         this.name = "SlipReadError";
+    }
+}
+
+class FatalError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "FatalError";
     }
 }
