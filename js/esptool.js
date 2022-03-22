@@ -250,14 +250,14 @@ class EspLoader {
    * @name macAddr
    * The MAC address burned into the OTP memory of the ESP chip
    */
-   macAddr() {
+  macAddr() {
     let macAddr = new Array(6).fill(0);
     let mac0 = this._efuses[0];
     let mac1 = this._efuses[1];
     let mac2 = this._efuses[2];
     let mac3 = this._efuses[3];
     let oui;
-    if (this.chipfamily == ESP8266) {
+    if (this._chipfamily == ESP8266) {
       if (mac3 != 0) {
         oui = [(mac3 >> 16) & 0xff, (mac3 >> 8) & 0xff, mac3 & 0xff];
       } else if (((mac1 >> 16) & 0xff) == 0) {
@@ -274,21 +274,21 @@ class EspLoader {
       macAddr[3] = (mac1 >> 8) & 0xFF;
       macAddr[4] = mac1 & 0xFF;
       macAddr[5] = (mac0 >> 24) & 0xFF;
-    } else if (this.chipfamily == ESP32) {
+    } else if (this._chipfamily == ESP32) {
       macAddr[0] = (mac2 >> 8) & 0xff;
       macAddr[1] = mac2 & 0xff;
       macAddr[2] = (mac1 >> 24) & 0xff;
       macAddr[3] = (mac1 >> 16) & 0xff;
       macAddr[4] = (mac1 >> 8) & 0xff;
       macAddr[5] = mac1 & 0xff;
-    } else if (this.chipfamily == ESP32S2) {
+    } else if (this._chipfamily == ESP32S2) {
       macAddr[0] = (mac2 >> 8) & 0xff;
       macAddr[1] = mac2 & 0xff;
       macAddr[2] = (mac1 >> 24) & 0xff;
       macAddr[3] = (mac1 >> 16) & 0xff;
       macAddr[4] = (mac1 >> 8) & 0xff;
       macAddr[5] = mac1 & 0xff;
-    } else if (this.chipfamily == ESP32S3) {
+    } else if (this._chipfamily == ESP32S3) {
       macAddr[0] = (mac2 >> 8) & 0xff;
       macAddr[1] = mac2 & 0xff;
       macAddr[2] = (mac1 >> 24) & 0xff;
