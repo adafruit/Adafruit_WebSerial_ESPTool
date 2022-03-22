@@ -55,11 +55,6 @@ const ESP32 = 0x32;
 const ESP32S2 = 0x3252;
 const ESP32S3 = 0x3253;
 const ESP32C3 = 0x32C3;
-const CHIP_FAMILY_ESP8266 = 0x8266;
-const CHIP_FAMILY_ESP32 = 0x32;
-const CHIP_FAMILY_ESP32S2 = 0x3252;
-const CHIP_FAMILY_ESP32S3 = 0x3253;
-const CHIP_FAMILY_ESP32C3 = 0x32C3;
 
 // Commands supported by ESP8266 ROM bootloader
 const ESP_FLASH_BEGIN = 0x02;
@@ -192,7 +187,7 @@ const supportedChips = {
 
 class EspLoader {
   constructor(params) {
-    this._chipFamily = null;
+    this._chipfamily = null;
     this.readTimeout = 3000;  // Arbitrary number for now. This should be set more dynamically in the command() function
     this._efuses = new Array(4).fill(0);
     this._flashsize = 4 * 1024 * 1024;
@@ -262,7 +257,7 @@ class EspLoader {
     let mac2 = this._efuses[2];
     let mac3 = this._efuses[3];
     let oui;
-    if (this.chipFamily == CHIP_FAMILY_ESP8266) {
+    if (this.chipfamily == ESP8266) {
       if (mac3 != 0) {
         oui = [(mac3 >> 16) & 0xff, (mac3 >> 8) & 0xff, mac3 & 0xff];
       } else if (((mac1 >> 16) & 0xff) == 0) {
@@ -270,7 +265,7 @@ class EspLoader {
       } else if (((mac1 >> 16) & 0xff) == 1) {
         oui = [0xac, 0xd0, 0x74];
       } else {
-        throw new Error("Couldnt determine OUI");
+        throw("Couldnt determine OUI");
       }
 
       macAddr[0] = oui[0];
@@ -279,21 +274,21 @@ class EspLoader {
       macAddr[3] = (mac1 >> 8) & 0xFF;
       macAddr[4] = mac1 & 0xFF;
       macAddr[5] = (mac0 >> 24) & 0xFF;
-    } else if (this.chipFamily == CHIP_FAMILY_ESP32) {
+    } else if (this.chipfamily == ESP32) {
       macAddr[0] = (mac2 >> 8) & 0xff;
       macAddr[1] = mac2 & 0xff;
       macAddr[2] = (mac1 >> 24) & 0xff;
       macAddr[3] = (mac1 >> 16) & 0xff;
       macAddr[4] = (mac1 >> 8) & 0xff;
       macAddr[5] = mac1 & 0xff;
-    } else if (this.chipFamily == CHIP_FAMILY_ESP32S2) {
+    } else if (this.chipfamily == ESP32S2) {
       macAddr[0] = (mac2 >> 8) & 0xff;
       macAddr[1] = mac2 & 0xff;
       macAddr[2] = (mac1 >> 24) & 0xff;
       macAddr[3] = (mac1 >> 16) & 0xff;
       macAddr[4] = (mac1 >> 8) & 0xff;
       macAddr[5] = mac1 & 0xff;
-    } else if (this.chipFamily == CHIP_FAMILY_ESP32S3) {
+    } else if (this.chipfamily == ESP32S3) {
       macAddr[0] = (mac2 >> 8) & 0xff;
       macAddr[1] = mac2 & 0xff;
       macAddr[2] = (mac1 >> 24) & 0xff;
@@ -370,10 +365,10 @@ class EspLoader {
    * ESP32 or ESP8266 based on which chip type we're talking to
    */
   async chipType() {
-    if (this._chipFamily === null) {
-      this._chipFamily = await this.detectChip()
+    if (this._chipfamily === null) {
+      this._chipfamily = await this.detectChip()
     }
-    return this._chipFamily;
+    return this._chipfamily;
   };
 
   getChipInfo(chipId) {
@@ -430,9 +425,9 @@ class EspLoader {
     if (data !== null) {
       if (this.IS_STUB) {
           statusLen = 2;
-      } else if (this._chipFamily == ESP8266) {
+      } else if (this._chipfamily == ESP8266) {
           statusLen = 2;
-      } else if ([ESP32, ESP32S2, ESP32S3, ESP32C3].includes(this._chipFamily)) {
+      } else if ([ESP32, ESP32S2, ESP32S3, ESP32C3].includes(this._chipfamily)) {
           statusLen = 4;
       } else {
           if ([2, 4].includes(data.length)) {
@@ -711,7 +706,7 @@ class EspLoader {
   }
 
   async setBaudrate(baud) {
-    if (this._chipFamily == ESP8266) {
+    if (this._chipfamily == ESP8266) {
       this.logMsg("Baud rate can only change on ESP32 and ESP32-S2");
     } else {
       this.logMsg("Attempting to change baud rate to " + baud + "...");
@@ -847,7 +842,7 @@ class EspLoader {
     params = struct.pack(
         "<IIII", writeSize, numBlocks, flashWriteSize, offset
     );
-    if ([ESP32S2, ESP32S3, ESP32C3].includes(this._chipFamily) && !this.IS_STUB) {
+    if ([ESP32S2, ESP32S3, ESP32C3].includes(this._chipfamily) && !this.IS_STUB) {
         params = params.concat(struct.pack("<I", 0));
     }
 
@@ -896,13 +891,13 @@ class EspLoader {
     let buffer;
     let flashWriteSize = this.getFlashWriteSize();
     if (!this.IS_STUB) {
-        if ([ESP32, ESP32S2, ESP32S3, ESP32C3].includes(this._chipFamily)) {
+        if ([ESP32, ESP32S2, ESP32S3, ESP32C3].includes(this._chipfamily)) {
           await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
         }
     }
     //let flashId = await this.flashId();
 
-    if (this._chipFamily == ESP32) {
+    if (this._chipfamily == ESP32) {
       // We are hardcoded for 4MB flash on ESP32
       buffer = struct.pack(
           "<IIIIII", 0, this._flashsize, 0x10000, 4096, 256, 0xFFFF
@@ -923,7 +918,7 @@ class EspLoader {
     buffer = struct.pack(
         "<IIII", eraseSize, numBlocks, flashWriteSize, offset
     );
-    if ([ESP32S2, ESP32S3, ESP32C3].includes(this._chipFamily) && !this.IS_STUB) {
+    if ([ESP32S2, ESP32S3, ESP32C3].includes(this._chipfamily) && !this.IS_STUB) {
       buffer = buffer.concat(struct.pack(
         "<I", encrypted ? 1 : 0
       ));
@@ -1110,7 +1105,7 @@ class EspLoader {
    *   Provides a workaround for the bootloader erase bug on ESP8266.
    */
   getEraseSize(offset, size) {
-    if (this._chipFamily != ESP8266 || this.IS_STUB) {
+    if (this._chipfamily != ESP8266 || this.IS_STUB) {
       return size;
     }
     let sectorsPerBlock = 16;
@@ -1220,7 +1215,7 @@ class EspLoader {
 
     let ramBlock = ESP_RAM_BLOCK;
     // We're transferring over USB, right?
-    if ([ESP32S2, ESP32S3, ESP32C3].includes(this._chipFamily)) {
+    if ([ESP32S2, ESP32S3, ESP32C3].includes(this._chipfamily)) {
       ramBlock = USB_RAM_BLOCK;
     }
 
