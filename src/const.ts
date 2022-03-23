@@ -27,8 +27,9 @@ export const ESP32_FLASH_SIZES = {
   "4MB": 0x20,
   "8MB": 0x30,
   "16MB": 0x40,
-  "32MB": 0x19,
-  "64MB": 0x1a,
+  "32MB": 0x50,
+  "64MB": 0x60,
+  "128MB": 0x70
 };
 
 export const DETECTED_FLASH_SIZES = {
@@ -50,40 +51,72 @@ export const ESP_ROM_BAUD = 115200;
 export const ESP32_BOOTLOADER_FLASH_OFFSET = 0x1000;
 export const BOOTLOADER_FLASH_OFFSET = 0x0;
 
-export const ESP32_SPI_REG_BASE = 0x3ff42000;
-export const ESP32_SPI_USR_OFFS = 0x1c;
-export const ESP32_SPI_USR1_OFFS = 0x20;
-export const ESP32_SPI_USR2_OFFS = 0x24;
-export const ESP32_SPI_MOSI_DLEN_OFFS = 0x28;
-export const ESP32_SPI_MISO_DLEN_OFFS = 0x2c;
-export const ESP32_SPI_W0_OFFS = 0x80;
-
 export const ESP8266_SPI_REG_BASE = 0x60000200;
+export const ESP8266_BASEFUSEADDR = 0x3FF00050;
+export const ESP8266_MACFUSEADDR = 0x3FF00050;
 export const ESP8266_SPI_USR_OFFS = 0x1c;
 export const ESP8266_SPI_USR1_OFFS = 0x20;
 export const ESP8266_SPI_USR2_OFFS = 0x24;
 export const ESP8266_SPI_MOSI_DLEN_OFFS = -1;
 export const ESP8266_SPI_MISO_DLEN_OFFS = -1;
 export const ESP8266_SPI_W0_OFFS = 0x40;
+export const ESP8266_UART_DATE_REG_ADDR = 0x60000078;
+
+export const ESP32_SPI_REG_BASE = 0x3ff42000;
+export const ESP32_BASEFUSEADDR = 0x3FF5A000;
+export const ESP32_MACFUSEADDR = 0x3FF5A000;
+export const ESP32_SPI_USR_OFFS = 0x1c;
+export const ESP32_SPI_USR1_OFFS = 0x20;
+export const ESP32_SPI_USR2_OFFS = 0x24;
+export const ESP32_SPI_MOSI_DLEN_OFFS = 0x28;
+export const ESP32_SPI_MISO_DLEN_OFFS = 0x2c;
+export const ESP32_SPI_W0_OFFS = 0x80;
+export const ESP32_UART_DATE_REG_ADDR = 0x60000078;
+
+export const ESP32S2_SPI_REG_BASE = 0x3f402000;
+export const ESP32S2_BASEFUSEADDR = 0x3f41A000;
+export const ESP32S2_MACFUSEADDR = 0x3f41A044;
+export const ESP32S2_SPI_USR_OFFS = 0x18;
+export const ESP32S2_SPI_USR1_OFFS = 0x1c;
+export const ESP32S2_SPI_USR2_OFFS = 0x20;
+export const ESP32S2_SPI_MOSI_DLEN_OFFS = 0x24;
+export const ESP32S2_SPI_MISO_DLEN_OFFS = 0x28;
+export const ESP32S2_SPI_W0_OFFS = 0x58;
+export const ESP32S2_UART_DATE_REG_ADDR = 0x60000078;
+
+export const ESP32S3_SPI_REG_BASE = 0x60002000;
+export const ESP32S3_BASEFUSEADDR = 0x60007000;
+export const ESP32S3_MACFUSEADDR = 0x60007000 + 0x044;
+export const ESP32S3_SPI_USR_OFFS = 0x18;
+export const ESP32S3_SPI_USR1_OFFS = 0x1c;
+export const ESP32S3_SPI_USR2_OFFS = 0x20;
+export const ESP32S3_SPI_MOSI_DLEN_OFFS = 0x24;
+export const ESP32S3_SPI_MISO_DLEN_OFFS = 0x28;
+export const ESP32S3_SPI_W0_OFFS = 0x58;
+export const ESP32S3_UART_DATE_REG_ADDR = 0x60000080;
 
 export const ESP32C3_SPI_REG_BASE = 0x60002000;
+export const ESP32C3_BASEFUSEADDR = 0x60008800;
+export const ESP32C3_MACFUSEADDR = 0x60008800 + 0x044;
 export const ESP32C3_SPI_USR_OFFS = 0x18;
 export const ESP32C3_SPI_USR1_OFFS = 0x1c;
 export const ESP32C3_SPI_USR2_OFFS = 0x20;
 export const ESP32C3_SPI_MOSI_DLEN_OFFS = 0x24;
 export const ESP32C3_SPI_MISO_DLEN_OFFS = 0x28;
 export const ESP32C3_SPI_W0_OFFS = 0x58;
-
-const UART_DATE_REG_ADDR = 0x60000078;
+export const ESP32C3_UART_DATE_REG_ADDR = 0x6000007c;
 
 export interface SpiFlashAddresses {
   regBase: number;
+  baseFuse: number;
+  macFuse: number;
   usrOffs: number;
   usr1Offs: number;
   usr2Offs: number;
   mosiDlenOffs: number;
   misoDlenOffs: number;
   w0Offs: number;
+  uartDateReg: number;
 }
 
 export const SYNC_PACKET = toByteArray(
@@ -95,8 +128,8 @@ export const CHIP_FAMILY_ESP8266 = 0x8266;
 export const CHIP_FAMILY_ESP32 = 0x32;
 export const CHIP_FAMILY_ESP32S2 = 0x3252;
 export const CHIP_FAMILY_ESP32S3 = 0x3253;
-export const CHIP_FAMILY_ESP32C3 = 0x3223;
-export const CHIP_FAMILY_ESP32C6 = 0x3226;
+export const CHIP_FAMILY_ESP32C3 = 0x32C3;
+export const CHIP_FAMILY_ESP32C6 = 0x32C6;
 export const CHIP_FAMILY_ESP32H2 = 0x3272;
 export type ChipFamily =
   | typeof CHIP_FAMILY_ESP8266
@@ -157,7 +190,7 @@ export const CHIP_ERASE_TIMEOUT = 600000; // timeout for full chip erase in ms
 export const MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2; // longest any command can run in ms
 export const SYNC_TIMEOUT = 100; // timeout for syncing with bootloader in ms
 export const ERASE_REGION_TIMEOUT_PER_MB = 30000; // timeout (per megabyte) for erasing a region in ms
-export const MEM_END_ROM_TIMEOUT = 50;
+export const MEM_END_ROM_TIMEOUT = 500;
 
 /**
  * @name timeoutPerMb
@@ -178,67 +211,81 @@ export const getSpiFlashAddresses = (
     case CHIP_FAMILY_ESP32:
       return {
         regBase: ESP32_SPI_REG_BASE,
+        baseFuse: ESP32_BASEFUSEADDR,
+        macFuse: ESP32_MACFUSEADDR,
         usrOffs: ESP32_SPI_USR_OFFS,
         usr1Offs: ESP32_SPI_USR1_OFFS,
         usr2Offs: ESP32_SPI_USR2_OFFS,
         mosiDlenOffs: ESP32_SPI_MOSI_DLEN_OFFS,
         misoDlenOffs: ESP32_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP32_SPI_W0_OFFS,
+        uartDateReg: ESP32_UART_DATE_REG_ADDR,
       };
     case CHIP_FAMILY_ESP32S2:
       return {
-        regBase: ESP32_SPI_REG_BASE,
-        usrOffs: ESP32_SPI_USR_OFFS,
-        usr1Offs: ESP32_SPI_USR1_OFFS,
-        usr2Offs: ESP32_SPI_USR2_OFFS,
-        mosiDlenOffs: ESP32_SPI_MOSI_DLEN_OFFS,
-        misoDlenOffs: ESP32_SPI_MISO_DLEN_OFFS,
-        w0Offs: ESP32_SPI_W0_OFFS,
+        regBase: ESP32S2_SPI_REG_BASE,
+        baseFuse: ESP32S2_BASEFUSEADDR,
+        macFuse: ESP32S2_MACFUSEADDR,
+        usrOffs: ESP32S2_SPI_USR_OFFS,
+        usr1Offs: ESP32S2_SPI_USR1_OFFS,
+        usr2Offs: ESP32S2_SPI_USR2_OFFS,
+        mosiDlenOffs: ESP32S2_SPI_MOSI_DLEN_OFFS,
+        misoDlenOffs: ESP32S2_SPI_MISO_DLEN_OFFS,
+        w0Offs: ESP32S2_SPI_W0_OFFS,
+        uartDateReg: ESP32S2_UART_DATE_REG_ADDR,
+      };
+    case CHIP_FAMILY_ESP32S3:
+      return {
+        regBase: ESP32S3_SPI_REG_BASE,
+        usrOffs: ESP32S3_SPI_USR_OFFS,
+        baseFuse: ESP32S3_BASEFUSEADDR,
+        macFuse: ESP32S3_MACFUSEADDR,
+        usr1Offs: ESP32S3_SPI_USR1_OFFS,
+        usr2Offs: ESP32S3_SPI_USR2_OFFS,
+        mosiDlenOffs: ESP32S3_SPI_MOSI_DLEN_OFFS,
+        misoDlenOffs: ESP32S3_SPI_MISO_DLEN_OFFS,
+        w0Offs: ESP32S3_SPI_W0_OFFS,
+        uartDateReg: ESP32S3_UART_DATE_REG_ADDR,
       };
     case CHIP_FAMILY_ESP8266:
       return {
         regBase: ESP8266_SPI_REG_BASE,
         usrOffs: ESP8266_SPI_USR_OFFS,
+        baseFuse: ESP8266_BASEFUSEADDR,
+        macFuse: ESP8266_MACFUSEADDR,
         usr1Offs: ESP8266_SPI_USR1_OFFS,
         usr2Offs: ESP8266_SPI_USR2_OFFS,
         mosiDlenOffs: ESP8266_SPI_MOSI_DLEN_OFFS,
         misoDlenOffs: ESP8266_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP8266_SPI_W0_OFFS,
+        uartDateReg: ESP8266_UART_DATE_REG_ADDR,
       };
     case CHIP_FAMILY_ESP32C3:
       return {
         regBase: ESP32C3_SPI_REG_BASE,
+        baseFuse: ESP32C3_BASEFUSEADDR,
+        macFuse: ESP32C3_MACFUSEADDR,
         usrOffs: ESP32C3_SPI_USR_OFFS,
         usr1Offs: ESP32C3_SPI_USR1_OFFS,
         usr2Offs: ESP32C3_SPI_USR2_OFFS,
         mosiDlenOffs: ESP32C3_SPI_MOSI_DLEN_OFFS,
         misoDlenOffs: ESP32C3_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP32C3_SPI_W0_OFFS,
+        uartDateReg: ESP32C3_UART_DATE_REG_ADDR,
       };
     default:
       return {
         regBase: -1,
+        baseFuse: -1,
+        macFuse: -1,
         usrOffs: -1,
         usr1Offs: -1,
         usr2Offs: -1,
         mosiDlenOffs: -1,
         misoDlenOffs: -1,
         w0Offs: -1,
+        uartDateReg: -1,
       };
-  }
-};
-
-export const getUartDateRegAddress = (chipFamily: ChipFamily): number => {
-  // Additional chips like S3 or C6 have different addresses
-  switch (chipFamily) {
-    case CHIP_FAMILY_ESP32:
-      return UART_DATE_REG_ADDR;
-    case CHIP_FAMILY_ESP32S2:
-      return UART_DATE_REG_ADDR;
-    case CHIP_FAMILY_ESP8266:
-      return UART_DATE_REG_ADDR;
-    default:
-      return -1;
   }
 };
 
