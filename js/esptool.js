@@ -259,11 +259,11 @@ class EspLoader {
     let oui;
     if (this._chipfamily == ESP8266) {
       if (mac3 != 0) {
-        oui = [(mac3 >> 16) & 0xFF, (mac3 >> 8) & 0xFF, mac3 & 0xFF];
-      } else if (((mac1 >> 16) & 0xFF) == 0) {
-        oui = [0x18, 0xFE, 0x34];
-      } else if (((mac1 >> 16) & 0xFF) == 1) {
-        oui = [0xAC, 0xD0, 0x74];
+        oui = [(mac3 >> 16) & 0xff, (mac3 >> 8) & 0xff, mac3 & 0xff];
+      } else if (((mac1 >> 16) & 0xff) == 0) {
+        oui = [0x18, 0xfe, 0x34];
+      } else if (((mac1 >> 16) & 0xff) == 1) {
+        oui = [0xac, 0xd0, 0x74];
       } else {
         throw("Couldnt determine OUI");
       }
@@ -274,20 +274,20 @@ class EspLoader {
       macAddr[3] = (mac1 >> 8) & 0xFF;
       macAddr[4] = mac1 & 0xFF;
       macAddr[5] = (mac0 >> 24) & 0xFF;
-    } else if (this._chipfamily == ESP32 || this._chipfamily == ESP32S2 || this._chipfamily == ESP32S3) {
-      macAddr[0] = mac2 >> 8 & 0xFF;
-      macAddr[1] = mac2 & 0xFF;
-      macAddr[2] = mac1 >> 24 & 0xFF;
-      macAddr[3] = mac1 >> 16 & 0xFF;
-      macAddr[4] = mac1 >> 8 & 0xFF;
-      macAddr[5] = mac1 & 0xFF;
-    } else if (this._chipfamily == ESP32C3) {
-      macAddr[0] = mac1 >> 8 & 0xFF;
-      macAddr[1] = mac1 & 0xFF;
-      macAddr[2] = mac0 >> 24 & 0xFF;
-      macAddr[3] = mac0 >> 16 & 0xFF;
-      macAddr[4] = mac0 >> 8 & 0xFF;
-      macAddr[5] = mac0 & 0xFF;
+    } else if (this._chipfamily == ESP32) {
+      macAddr[0] = (mac2 >> 8) & 0xff;
+      macAddr[1] = mac2 & 0xff;
+      macAddr[2] = (mac1 >> 24) & 0xff;
+      macAddr[3] = (mac1 >> 16) & 0xff;
+      macAddr[4] = (mac1 >> 8) & 0xff;
+      macAddr[5] = mac1 & 0xff;
+    } else if ([ESP32S2, ESP32S3, ESP32C3].includes(this._chipfamily)) {
+      macAddr[0] = (mac1 >> 8) & 0xff;
+      macAddr[1] = mac1 & 0xff;
+      macAddr[2] = (mac0 >> 24) & 0xff;
+      macAddr[3] = (mac0 >> 16) & 0xff;
+      macAddr[4] = (mac0 >> 8) & 0xff;
+      macAddr[5] = mac0 & 0xff;
     } else {
       throw("Unknown chip family")
     }
@@ -305,10 +305,10 @@ class EspLoader {
    * Read the OTP data for this chip and store into this.efuses array
    */
   async _readEfuses() {
-    let chipType = await this.chipType();  
+    let chipType = await this.chipType();
     let chipInfo = this.getChipInfo(chipType);
     for (let i = 0; i < 4; i++) {
-      this._efuses[i] = await this.readRegister(chipInfo.macFuseAddr + 4 * i);
+      this._efuses[i] = await this.readRegister(chipInfo.macFuseAddr + (4 * i));
     }
   };
 
@@ -388,8 +388,8 @@ class EspLoader {
   async chipName() {
     let chipType = await this.chipType();
     let chipInfo = this.getChipInfo(chipType);
+    await this._readEfuses();
     if (chipType == ESP8266) {
-      await this._readEfuses();
       if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
         return "ESP8285";
       }
