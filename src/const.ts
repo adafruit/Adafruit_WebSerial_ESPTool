@@ -29,7 +29,7 @@ export const ESP32_FLASH_SIZES = {
   "16MB": 0x40,
   "32MB": 0x50,
   "64MB": 0x60,
-  "128MB": 0x70
+  "128MB": 0x70,
 };
 
 export const DETECTED_FLASH_SIZES = {
@@ -52,8 +52,8 @@ export const ESP32_BOOTLOADER_FLASH_OFFSET = 0x1000;
 export const BOOTLOADER_FLASH_OFFSET = 0x0;
 
 export const ESP8266_SPI_REG_BASE = 0x60000200;
-export const ESP8266_BASEFUSEADDR = 0x3FF00050;
-export const ESP8266_MACFUSEADDR = 0x3FF00050;
+export const ESP8266_BASEFUSEADDR = 0x3ff00050;
+export const ESP8266_MACFUSEADDR = 0x3ff00050;
 export const ESP8266_SPI_USR_OFFS = 0x1c;
 export const ESP8266_SPI_USR1_OFFS = 0x20;
 export const ESP8266_SPI_USR2_OFFS = 0x24;
@@ -63,8 +63,8 @@ export const ESP8266_SPI_W0_OFFS = 0x40;
 export const ESP8266_UART_DATE_REG_ADDR = 0x60000078;
 
 export const ESP32_SPI_REG_BASE = 0x3ff42000;
-export const ESP32_BASEFUSEADDR = 0x3FF5A000;
-export const ESP32_MACFUSEADDR = 0x3FF5A000;
+export const ESP32_BASEFUSEADDR = 0x3ff5a000;
+export const ESP32_MACFUSEADDR = 0x3ff5a000;
 export const ESP32_SPI_USR_OFFS = 0x1c;
 export const ESP32_SPI_USR1_OFFS = 0x20;
 export const ESP32_SPI_USR2_OFFS = 0x24;
@@ -74,8 +74,8 @@ export const ESP32_SPI_W0_OFFS = 0x80;
 export const ESP32_UART_DATE_REG_ADDR = 0x60000078;
 
 export const ESP32S2_SPI_REG_BASE = 0x3f402000;
-export const ESP32S2_BASEFUSEADDR = 0x3f41A000;
-export const ESP32S2_MACFUSEADDR = 0x3f41A044;
+export const ESP32S2_BASEFUSEADDR = 0x3f41a000;
+export const ESP32S2_MACFUSEADDR = 0x3f41a044;
 export const ESP32S2_SPI_USR_OFFS = 0x18;
 export const ESP32S2_SPI_USR1_OFFS = 0x1c;
 export const ESP32S2_SPI_USR2_OFFS = 0x20;
@@ -128,8 +128,8 @@ export const CHIP_FAMILY_ESP8266 = 0x8266;
 export const CHIP_FAMILY_ESP32 = 0x32;
 export const CHIP_FAMILY_ESP32S2 = 0x3252;
 export const CHIP_FAMILY_ESP32S3 = 0x3253;
-export const CHIP_FAMILY_ESP32C3 = 0x32C3;
-export const CHIP_FAMILY_ESP32C6 = 0x32C6;
+export const CHIP_FAMILY_ESP32C3 = 0x32c3;
+export const CHIP_FAMILY_ESP32C6 = 0x32c6;
 export const CHIP_FAMILY_ESP32H2 = 0x3272;
 export type ChipFamily =
   | typeof CHIP_FAMILY_ESP8266

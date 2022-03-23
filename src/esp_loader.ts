@@ -195,13 +195,17 @@ export class ESPLoader extends EventTarget {
       macAddr[3] = (mac1 >> 16) & 0xff;
       macAddr[4] = (mac1 >> 8) & 0xff;
       macAddr[5] = mac1 & 0xff;
-    } else if (this.chipFamily == CHIP_FAMILY_ESP32S2 || this.chipFamily == CHIP_FAMILY_ESP32S3 || this.chipFamily == CHIP_FAMILY_ESP32C3) {
-      macAddr[0] = (mac1 >> 8) & 0xFF;
-      macAddr[1] = mac1 & 0xFF;
-      macAddr[2] = (mac0 >> 24) & 0xFF;
-      macAddr[3] = (mac0 >> 16) & 0xFF;
-      macAddr[4] = (mac0 >> 8) & 0xFF;
-      macAddr[5] = mac0 & 0xFF;
+    } else if (
+      this.chipFamily == CHIP_FAMILY_ESP32S2 ||
+      this.chipFamily == CHIP_FAMILY_ESP32S3 ||
+      this.chipFamily == CHIP_FAMILY_ESP32C3
+    ) {
+      macAddr[0] = (mac1 >> 8) & 0xff;
+      macAddr[1] = mac1 & 0xff;
+      macAddr[2] = (mac0 >> 24) & 0xff;
+      macAddr[3] = (mac0 >> 16) & 0xff;
+      macAddr[4] = (mac0 >> 8) & 0xff;
+      macAddr[5] = mac0 & 0xff;
     } else {
       throw new Error("Unknown chip family");
     }
@@ -243,7 +247,12 @@ export class ESPLoader extends EventTarget {
     if (this.IS_STUB || this.chipFamily == CHIP_FAMILY_ESP8266) {
       statusLen = 2;
     } else if (
-      [CHIP_FAMILY_ESP32, CHIP_FAMILY_ESP32S2, CHIP_FAMILY_ESP32S3, CHIP_FAMILY_ESP32C3].includes(this.chipFamily)
+      [
+        CHIP_FAMILY_ESP32,
+        CHIP_FAMILY_ESP32S2,
+        CHIP_FAMILY_ESP32S3,
+        CHIP_FAMILY_ESP32C3,
+      ].includes(this.chipFamily)
     ) {
       statusLen = 4;
     } else {
@@ -684,7 +693,11 @@ export class ESPLoader extends EventTarget {
 
     let stamp = Date.now();
     buffer = pack("<IIII", eraseSize, numBlocks, flashWriteSize, offset);
-    if (this.chipFamily == CHIP_FAMILY_ESP32S2 || this.chipFamily == CHIP_FAMILY_ESP32S3 || this.chipFamily == CHIP_FAMILY_ESP32C3) {
+    if (
+      this.chipFamily == CHIP_FAMILY_ESP32S2 ||
+      this.chipFamily == CHIP_FAMILY_ESP32S3 ||
+      this.chipFamily == CHIP_FAMILY_ESP32C3
+    ) {
       buffer = buffer.concat(pack("<I", encrypted ? 1 : 0));
     }
     this.logger.log(
