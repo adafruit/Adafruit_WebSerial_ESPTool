@@ -48,8 +48,6 @@ export const FLASH_WRITE_SIZE = 0x400;
 export const STUB_FLASH_WRITE_SIZE = 0x4000;
 export const FLASH_SECTOR_SIZE = 0x1000; // Flash sector size, minimum unit of erase.
 export const ESP_ROM_BAUD = 115200;
-export const ESP32_BOOTLOADER_FLASH_OFFSET = 0x1000;
-export const BOOTLOADER_FLASH_OFFSET = 0x0;
 
 export const ESP8266_SPI_REG_BASE = 0x60000200;
 export const ESP8266_BASEFUSEADDR = 0x3ff00050;
@@ -61,6 +59,7 @@ export const ESP8266_SPI_MOSI_DLEN_OFFS = -1;
 export const ESP8266_SPI_MISO_DLEN_OFFS = -1;
 export const ESP8266_SPI_W0_OFFS = 0x40;
 export const ESP8266_UART_DATE_REG_ADDR = 0x60000078;
+export const ESP8266_BOOTLOADER_FLASH_OFFSET = 0x0;
 
 export const ESP32_SPI_REG_BASE = 0x3ff42000;
 export const ESP32_BASEFUSEADDR = 0x3ff5a000;
@@ -72,6 +71,7 @@ export const ESP32_SPI_MOSI_DLEN_OFFS = 0x28;
 export const ESP32_SPI_MISO_DLEN_OFFS = 0x2c;
 export const ESP32_SPI_W0_OFFS = 0x80;
 export const ESP32_UART_DATE_REG_ADDR = 0x60000078;
+export const ESP32_BOOTLOADER_FLASH_OFFSET = 0x1000;
 
 export const ESP32S2_SPI_REG_BASE = 0x3f402000;
 export const ESP32S2_BASEFUSEADDR = 0x3f41a000;
@@ -83,6 +83,7 @@ export const ESP32S2_SPI_MOSI_DLEN_OFFS = 0x24;
 export const ESP32S2_SPI_MISO_DLEN_OFFS = 0x28;
 export const ESP32S2_SPI_W0_OFFS = 0x58;
 export const ESP32S2_UART_DATE_REG_ADDR = 0x60000078;
+export const ESP32S2_BOOTLOADER_FLASH_OFFSET = 0x1000;
 
 export const ESP32S3_SPI_REG_BASE = 0x60002000;
 export const ESP32S3_BASEFUSEADDR = 0x60007000;
@@ -94,6 +95,7 @@ export const ESP32S3_SPI_MOSI_DLEN_OFFS = 0x24;
 export const ESP32S3_SPI_MISO_DLEN_OFFS = 0x28;
 export const ESP32S3_SPI_W0_OFFS = 0x58;
 export const ESP32S3_UART_DATE_REG_ADDR = 0x60000080;
+export const ESP32S3_BOOTLOADER_FLASH_OFFSET = 0x0;
 
 export const ESP32C3_SPI_REG_BASE = 0x60002000;
 export const ESP32C3_BASEFUSEADDR = 0x60008800;
@@ -105,6 +107,7 @@ export const ESP32C3_SPI_MOSI_DLEN_OFFS = 0x24;
 export const ESP32C3_SPI_MISO_DLEN_OFFS = 0x28;
 export const ESP32C3_SPI_W0_OFFS = 0x58;
 export const ESP32C3_UART_DATE_REG_ADDR = 0x6000007c;
+export const ESP32C3_BOOTLOADER_FLASH_OFFSET = 0x0;
 
 export interface SpiFlashAddresses {
   regBase: number;
@@ -117,6 +120,7 @@ export interface SpiFlashAddresses {
   misoDlenOffs: number;
   w0Offs: number;
   uartDateReg: number;
+  flashOffs: number;
 }
 
 export const SYNC_PACKET = toByteArray(
@@ -151,10 +155,6 @@ export const CHIP_DETECT_MAGIC_VALUES = {
   0xca26cc22: { name: "ESP32-H2", family: CHIP_FAMILY_ESP32H2 },
   0x0da1806f: { name: "ESP32-C6(beta)", family: CHIP_FAMILY_ESP32C6 },
 };
-
-export const ESP32_DATAREGVALUE = 0x15122500;
-export const ESP8266_DATAREGVALUE = 0x00062000;
-export const ESP32S2_DATAREGVALUE = 0x500;
 
 // Commands supported by ESP8266 ROM bootloader
 export const ESP_FLASH_BEGIN = 0x02;
@@ -220,6 +220,7 @@ export const getSpiFlashAddresses = (
         misoDlenOffs: ESP32_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP32_SPI_W0_OFFS,
         uartDateReg: ESP32_UART_DATE_REG_ADDR,
+        flashOffs: ESP32_BOOTLOADER_FLASH_OFFSET,
       };
     case CHIP_FAMILY_ESP32S2:
       return {
@@ -233,6 +234,7 @@ export const getSpiFlashAddresses = (
         misoDlenOffs: ESP32S2_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP32S2_SPI_W0_OFFS,
         uartDateReg: ESP32S2_UART_DATE_REG_ADDR,
+        flashOffs: ESP32S2_BOOTLOADER_FLASH_OFFSET,
       };
     case CHIP_FAMILY_ESP32S3:
       return {
@@ -246,6 +248,7 @@ export const getSpiFlashAddresses = (
         misoDlenOffs: ESP32S3_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP32S3_SPI_W0_OFFS,
         uartDateReg: ESP32S3_UART_DATE_REG_ADDR,
+        flashOffs: ESP32S3_BOOTLOADER_FLASH_OFFSET,
       };
     case CHIP_FAMILY_ESP8266:
       return {
@@ -259,6 +262,7 @@ export const getSpiFlashAddresses = (
         misoDlenOffs: ESP8266_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP8266_SPI_W0_OFFS,
         uartDateReg: ESP8266_UART_DATE_REG_ADDR,
+        flashOffs: ESP8266_BOOTLOADER_FLASH_OFFSET,
       };
     case CHIP_FAMILY_ESP32C3:
       return {
@@ -272,6 +276,7 @@ export const getSpiFlashAddresses = (
         misoDlenOffs: ESP32C3_SPI_MISO_DLEN_OFFS,
         w0Offs: ESP32C3_SPI_W0_OFFS,
         uartDateReg: ESP32C3_UART_DATE_REG_ADDR,
+        flashOffs: ESP32C3_BOOTLOADER_FLASH_OFFSET,
       };
     default:
       return {
@@ -285,6 +290,7 @@ export const getSpiFlashAddresses = (
         misoDlenOffs: -1,
         w0Offs: -1,
         uartDateReg: -1,
+        flashOffs: -1,
       };
   }
 };

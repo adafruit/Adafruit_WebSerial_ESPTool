@@ -36,8 +36,6 @@ import {
   ESP_FLASH_DEFL_BEGIN,
   ESP_FLASH_DEFL_DATA,
   ESP_FLASH_DEFL_END,
-  ESP32_BOOTLOADER_FLASH_OFFSET,
-  BOOTLOADER_FLASH_OFFSET,
   getSpiFlashAddresses,
   SpiFlashAddresses,
   DETECTED_FLASH_SIZES,
@@ -101,19 +99,12 @@ export class ESPLoader extends EventTarget {
     this.chipFamily = chip.family;
 
     // Read the OTP data for this chip and store into this.efuses array
-    let MACAddr = getSpiFlashAddresses(this.getChipFamily());
-    let baseAddr = MACAddr.macFuse;
+    let FlAddr = getSpiFlashAddresses(this.getChipFamily());
+    let AddrMAC = FlAddr.macFuse;
     for (let i = 0; i < 4; i++) {
-      this._efuses[i] = await this.readRegister(baseAddr! + 4 * i);
+      this._efuses[i] = await this.readRegister(AddrMAC + 4 * i);
     }
     this.logger.log(`Chip type ${this.chipName}`);
-
-    // if (this._efuses[0] & (1 << 4) || this._efuses[2] & (1 << 16)) {
-    //   this.chipName = "ESP8285";
-    // } else {
-    //   this.chipName = "ESP8266EX";
-    // }
-
     //this.logger.log("FLASHID");
   }
 
@@ -122,7 +113,9 @@ export class ESPLoader extends EventTarget {
    * Reads data from the input stream and places it in the inputBuffer
    */
   async readLoop() {
-    this.logger.debug("Starting read loop");
+    if (this.debug) {
+      this.logger.debug("Starting read loop");
+    }
 
     this._reader = this.port.readable!.getReader();
 
@@ -550,12 +543,12 @@ export class ESPLoader extends EventTarget {
       var header = Array.from(new Uint8Array(binaryData, 0, 4));
       let headerMagic = header[0];
       let headerFlashMode = header[2];
-      let heatherFlashSizeFreq = header[3];
+      let headerFlashSizeFreq = header[3];
 
-      this.logger.debug(
+      this.logger.log(
         `Image header, Magic=${toHex(headerMagic)}, FlashMode=${toHex(
           headerFlashMode
-        )}, FlashSizeFreq=${toHex(heatherFlashSizeFreq)}`
+        )}, FlashSizeFreq=${toHex(headerFlashSizeFreq)}`
       );
     }
 
@@ -673,7 +666,12 @@ export class ESPLoader extends EventTarget {
     let flashWriteSize = this.getFlashWriteSize();
     if (
       !this.IS_STUB &&
-      [CHIP_FAMILY_ESP32, CHIP_FAMILY_ESP32S2].includes(this.chipFamily)
+      [
+        CHIP_FAMILY_ESP32,
+        CHIP_FAMILY_ESP32S2,
+        CHIP_FAMILY_ESP32S3,
+        CHIP_FAMILY_ESP32C3,
+      ].includes(this.chipFamily)
     ) {
       await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
     }
@@ -694,6 +692,7 @@ export class ESPLoader extends EventTarget {
     let stamp = Date.now();
     buffer = pack("<IIII", eraseSize, numBlocks, flashWriteSize, offset);
     if (
+      this.chipFamily == CHIP_FAMILY_ESP32 ||
       this.chipFamily == CHIP_FAMILY_ESP32S2 ||
       this.chipFamily == CHIP_FAMILY_ESP32S3 ||
       this.chipFamily == CHIP_FAMILY_ESP32C3
@@ -706,7 +705,7 @@ export class ESPLoader extends EventTarget {
         ", blocks " +
         numBlocks +
         ", block size " +
-        flashWriteSize +
+        toHex(flashWriteSize, 4) +
         ", offset " +
         toHex(offset, 4) +
         ", encrypted " +
@@ -768,15 +767,9 @@ export class ESPLoader extends EventTarget {
   }
 
   getBootloaderOffset() {
-    if (
-      this.chipFamily == CHIP_FAMILY_ESP32 ||
-      this._parent?.chipFamily == CHIP_FAMILY_ESP32 ||
-      this.chipFamily == CHIP_FAMILY_ESP32S2 ||
-      this._parent?.chipFamily == CHIP_FAMILY_ESP32S2
-    ) {
-      return ESP32_BOOTLOADER_FLASH_OFFSET;
-    }
-    return BOOTLOADER_FLASH_OFFSET;
+    let bootFlashOffs = getSpiFlashAddresses(this.getChipFamily());
+    let BootldrFlashOffs = bootFlashOffs.flashOffs;
+    return BootldrFlashOffs;
   }
 
   async flashId() {
@@ -871,7 +864,7 @@ export class ESPLoader extends EventTarget {
     // SPI registers, base address differs ESP32* vs 8266
     let spiAddresses = getSpiFlashAddresses(this.getChipFamily());
     let base = spiAddresses.regBase;
-    let SPI_CMD_REG = base + 0x00;
+    let SPI_CMD_REG = base;
     let SPI_USR_REG = base + spiAddresses.usrOffs;
     let SPI_USR2_REG = base + spiAddresses.usr2Offs;
     let SPI_W0_REG = base + spiAddresses.w0Offs;
