@@ -140,14 +140,6 @@ class struct {
     }
 }
 
-String.prototype.replaceAt = function(index, character) {
-    return this.substr(0, index) + character + this.substr(index + character.length);
-};
-
-Array.prototype.replaceAt = function(index, newArray) {
-    return this.slice(0, index).concat(newArray).concat(this.slice(index + newArray.length));
-};
-
 function* makeFileIterator(content) {
     for (let line of content.split(/\r?\n/)) {
         yield line.trim();
