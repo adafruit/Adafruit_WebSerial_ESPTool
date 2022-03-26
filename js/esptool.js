@@ -1018,10 +1018,10 @@ class EspLoader {
         }
         setDataLengths = setDataLengths.bind(this);
         if (readBits > 32) {
-            throw FatalError("Reading more than 32 bits back from a SPI flash operation is unsupported")
+            throw new FatalError("Reading more than 32 bits back from a SPI flash operation is unsupported")
         }
         if (data.length > 64) {
-            throw FatalError("Writing more than 64 bytes of data with one SPI command is unsupported")
+            throw new FatalError("Writing more than 64 bytes of data with one SPI command is unsupported")
         }
 
         let dataBits = data.length * 8
@@ -1066,7 +1066,7 @@ class EspLoader {
                     return
                 }
             }
-            throw FatalError("SPI command did not complete in time")
+            throw new FatalError("SPI command did not complete in time")
         }
         waitDone = waitDone.bind(this);
         await waitDone();
