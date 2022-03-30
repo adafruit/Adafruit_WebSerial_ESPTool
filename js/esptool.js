@@ -482,10 +482,12 @@ class EspLoader {
     port = await navigator.serial.requestPort();
 
     // - Wait for the port to open.toggleUIConnected
-    if (this.getChromeVersion() < 86) {
-      await port.open({ baudrate: ESP_ROM_BAUD });
-    } else {
-      await port.open({ baudRate: ESP_ROM_BAUD });
+    try {
+      // support chrome < 86
+      await port.open({ baudrate: ESP_ROM_BAUD, baudRate: ESP_ROM_BAUD });
+    } catch(e) {
+      port = null;
+      throw e;
     }
 
     const signals = await port.getSignals();
@@ -502,10 +504,7 @@ class EspLoader {
   }
 
   connected() {
-    if (port) {
-      return true;
-    }
-    return false;
+    return !!port;
   }
 
   /**
