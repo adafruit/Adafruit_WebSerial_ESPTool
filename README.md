@@ -20,4 +20,4 @@ _This project is a collaboration between [Adafruit](https://www.adafruit.com/) a
 
 This project started as a fork of [Adafruit WebSerial ESPTool](https://github.com/adafruit/Adafruit_WebSerial_ESPTool) in June 2021. At the time fo the fork, the original repository was a single-use website. This fork converted the code into a reusable package and published it to NPM.
 
-In March 2022 took over maintenance from Adafruit and this fork became the main code base.
+In March 2022 Nabu Casa took over maintenance from Adafruit and this fork became the main code base.
