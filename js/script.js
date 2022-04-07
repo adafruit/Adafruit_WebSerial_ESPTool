@@ -300,9 +300,9 @@ async function clickProgram() {
       const progressBar = progress[file].querySelector("div");
       await espStub.flashData(
         contents,
-        (bytesWritten) => {
+        (bytesWritten, totalBytes) => {
           progressBar.style.width =
-            Math.floor((bytesWritten / contents.byteLength) * 100) + "%";
+            Math.floor((bytesWritten / totalBytes) * 100) + "%";
         },
         offset
       );
