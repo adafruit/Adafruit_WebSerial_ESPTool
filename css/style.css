@@ -157,10 +157,16 @@ div.clear {
 }
 
 .footer {
-  height: 45px;
-  line-height: 45px;
   padding-left: 70px;
   padding-right: 70px;
+}
+
+.footer a {
+  color: blue;
+}
+
+.footer .controls {
+  line-height: 45px;
 }
 
 .footer button {
@@ -275,10 +281,7 @@ div.clear {
 
 .footer .onoffswitch {
   margin-right: 20px;
-}
-
-#fpsCounter {
-  margin-right: 10px;
+  top: 7px;
 }
 
 #butClear {
@@ -370,4 +373,11 @@ div.clear {
   margin-right: 10px;
   border-width: 2px;
   border-style: solid;
+}
+.justify {
+  display: flex;
+  justify-content: space-between;
+}
+.center {
+  text-align: center;
 }
