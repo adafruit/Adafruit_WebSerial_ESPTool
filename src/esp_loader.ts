@@ -618,7 +618,10 @@ export class ESPLoader extends EventTarget {
         ? Math.round((block.length * uncompressedFilesize) / compressedFilesize)
         : block.length;
       position += flashWriteSize;
-      updateProgress(Math.min(written, filesize), filesize);
+      updateProgress(
+        Math.min(written, uncompressedFilesize),
+        uncompressedFilesize
+      );
     }
     this.logger.log(
       "Took " + (Date.now() - stamp) + "ms to write " + filesize + " bytes"
