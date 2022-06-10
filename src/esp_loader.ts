@@ -556,6 +556,7 @@ export class ESPLoader extends EventTarget {
     let compressedFilesize = 0;
 
     let dataToFlash;
+    let timeout = DEFAULT_TIMEOUT;
 
     if (compress) {
       dataToFlash = deflate(new Uint8Array(binaryData), {
@@ -565,7 +566,7 @@ export class ESPLoader extends EventTarget {
       this.logger.log(
         `Writing data with filesize: ${uncompressedFilesize}. Compressed Size: ${compressedFilesize}`
       );
-      await this.flashDeflBegin(
+      timeout = await this.flashDeflBegin(
         uncompressedFilesize,
         compressedFilesize,
         offset
@@ -607,7 +608,7 @@ export class ESPLoader extends EventTarget {
         }
       }
       if (compress) {
-        await this.flashDeflBlock(block, seq);
+        await this.flashDeflBlock(block, seq, timeout);
       } else {
         await this.flashBlock(block, seq);
       }
@@ -654,7 +655,8 @@ export class ESPLoader extends EventTarget {
     await this.checkCommand(
       ESP_FLASH_DEFL_DATA,
       pack("<IIII", data.length, seq, 0, 0).concat(data),
-      this.checksum(data)
+      this.checksum(data),
+      timeout
     );
   }
 
@@ -747,16 +749,16 @@ export class ESPLoader extends EventTarget {
 
     if (this.IS_STUB) {
       writeSize = size; // stub expects number of bytes here, manages erasing internally
-      timeout = DEFAULT_TIMEOUT;
+      timeout = timeoutPerMb(ERASE_REGION_TIMEOUT_PER_MB, writeSize); // ROM performs the erase up front
     } else {
       writeSize = eraseBlocks * flashWriteSize; // ROM expects rounded up to erase block size
-      timeout = timeoutPerMb(ERASE_REGION_TIMEOUT_PER_MB, writeSize); // ROM performs the erase up front
+      timeout = DEFAULT_TIMEOUT;
     }
     buffer = pack("<IIII", writeSize, numBlocks, flashWriteSize, offset);
 
     await this.checkCommand(ESP_FLASH_DEFL_BEGIN, buffer, 0, timeout);
 
-    return numBlocks;
+    return timeout;
   }
 
   async flashFinish() {
