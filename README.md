@@ -1,3 +1,5 @@
+# This package is deprecated. Use [esptool-js](https://github.com/espressif/esptool-js/) instead.
+
 # ESP Web Flasher
 
 JavaScript package to install firmware on ESP devices via the browser using WebSerial.
