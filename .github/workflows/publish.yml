@@ -29,6 +29,11 @@ jobs:
         NODE_ENV=production npm exec -- rollup -c
     - name: Rename build artifact
       run: mv dist/web/index.js esptool.js
+    - name: upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-files
+        path: esptool.js
     - name: Upload Assets to the GitHub Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
