@@ -1,0 +1,28 @@
+{
+  "name": "esp-web-flasher",
+  "version": "5.1.5",
+  "description": "Flash ESP devices using WebSerial",
+  "main": "dist/index.js",
+  "repository": "https://github.com/nabucasa/ESP-Web-flasher",
+  "author": "Nabu Casa",
+  "license": "MIT",
+  "scripts": {
+    "prepublishOnly": "script/build"
+  },
+  "devDependencies": {
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-typescript": "^8.2.1",
+    "@types/pako": "^2.0.0",
+    "@types/w3c-web-serial": "^1.0.1",
+    "prettier": "^2.3.0",
+    "rollup": "^2.48.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "serve": "^13.0.2",
+    "typescript": "^4.6.2"
+  },
+  "dependencies": {
+    "pako": "^2.0.3",
+    "tslib": "^2.2.0"
+  }
+}

@@ -45,7 +45,7 @@ input, select, button {
   color: #333;
 }
 
-#notSupported {
+.notSupported, .notSupported a {
   background-color: red;
   color: white;
 }

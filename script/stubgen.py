@@ -42,6 +42,6 @@ for key, stub in stubs.items():
 
     jsondata = json.dumps(code)
 
-    f  = open("../stubs/" + key + ".json", "w+")
+    f  = open("../src/stubs/" + key + ".json", "w+")
     f.write(jsondata)
     f.close()

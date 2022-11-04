@@ -13,7 +13,7 @@ input, select, button {
   color: #000;
 }
 
-#notSupported {
+.notSupported, .notSupported a {
   background-color: red;
   color: white;
 }
