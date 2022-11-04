@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - name: install node v18
+    - name: install node v16
       uses: actions/setup-node@v1
       with:
-        node-version: 18
+        node-version: 16
     - name: Install Yarn with NPM
       run: npm install -g yarn
     - name: yarn install
@@ -29,8 +29,8 @@ jobs:
         NODE_ENV=production npm exec -- rollup -c
     - name: Rename build artifact
       run: mv dist/web/index.js esptool.js
-    - name: upload build artifact
-      uses: actions/upload-artifact@v3
+    - name: Upload Assets to the GitHub Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
-        name: build-files
-        path: esptool.js
+        files: esptool.js
