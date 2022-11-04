@@ -4,7 +4,7 @@ import base64
 import zlib
 import json
 
-ESPTOOL_URL = "https://raw.githubusercontent.com/espressif/esptool/master/esptool.py"
+ESPTOOL_URL = "https://raw.githubusercontent.com/espressif/esptool/master/esptool/stub_flasher.py"
 STUB_HEADERS = {
     "esp8266": "ESP8266ROM.STUB_CODE",
     "esp32": "ESP32ROM.STUB_CODE",
