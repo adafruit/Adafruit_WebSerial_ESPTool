@@ -1,10 +1,10 @@
 {
-  "name": "esp-web-flasher",
-  "version": "5.1.5",
+  "name": "adafruit-webserial-esptool",
+  "version": "5.2.0",
   "description": "Flash ESP devices using WebSerial",
   "main": "dist/index.js",
-  "repository": "https://github.com/nabucasa/ESP-Web-flasher",
-  "author": "Nabu Casa",
+  "repository": "https://github.com/adafruit/WebSerial_ESPTool",
+  "author": "Melissa LeBlanc-Williams",
   "license": "MIT",
   "scripts": {
     "prepublishOnly": "script/build"
