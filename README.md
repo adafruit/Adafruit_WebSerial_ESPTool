@@ -1,10 +1,6 @@
-# This package is deprecated. Use [esptool-js](https://github.com/espressif/esptool-js/) instead.
-
-# ESP Web Flasher
+# Adafruit WebSerial ESPTool
 
 JavaScript package to install firmware on ESP devices via the browser using WebSerial.
-
-_This project is a collaboration between [Adafruit](https://www.adafruit.com/) and [Nabu Casa](https://www.nabucasa.com/)._
 
 ## Used by
 
