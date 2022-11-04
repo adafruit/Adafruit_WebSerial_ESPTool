@@ -21,9 +21,16 @@ jobs:
       run: npm install -g yarn
     - name: yarn install
       run: yarn install
-    - name: Build
+    - name: Compile TypeScript
       run: |
         set -e
         rm -rf dist
         NODE_ENV=production npm exec -- tsc
         NODE_ENV=production npm exec -- rollup -c
+    - name: Rename build artifact
+      run: mv dist/web/index.js esptool.js
+    - name: upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-files
+        path: esptool.js
