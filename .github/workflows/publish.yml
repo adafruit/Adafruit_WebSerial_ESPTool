@@ -9,7 +9,7 @@ on:
 
 jobs:
   tsc:
-    name: tsc
+    name: Build from Source
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
