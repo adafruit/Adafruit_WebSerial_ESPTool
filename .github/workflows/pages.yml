@@ -21,21 +21,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
+    name: Build from Source and Deploy
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - name: install node v16
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16
+      - name: Install Yarn with NPM
+        run: npm install -g yarn
+      - name: yarn install
+        run: yarn install
+      - name: Compile TypeScript
+        run: |
+          set -e
+          rm -rf dist
+          NODE_ENV=production npm exec -- tsc
+          NODE_ENV=production npm exec -- rollup -c
+      - name: Rename build artifact
+        run: |
+          mkdir js/modules
+          mv dist/web/index.js js/modules/esptool.js
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
-          # Upload entire repository
           path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
