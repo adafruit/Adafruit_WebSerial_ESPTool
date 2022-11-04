@@ -10,15 +10,15 @@
     "prepublishOnly": "script/build"
   },
   "devDependencies": {
-    "@rollup/plugin-json": "^4.1.0",
-    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-json": "^5.0.1",
+    "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-typescript": "^8.2.1",
     "@types/pako": "^2.0.0",
     "@types/w3c-web-serial": "^1.0.1",
     "prettier": "^2.3.0",
     "rollup": "^2.48.0",
     "rollup-plugin-terser": "^7.0.2",
-    "serve": "^13.0.2",
+    "serve": "^14.0.1",
     "typescript": "^4.6.2"
   },
   "dependencies": {
