@@ -48,7 +48,7 @@ jobs:
           mkdir js/modules
           ls dist/web/
           mv dist/web/*.js js/modules/
-          mv js/modules/index.js esptool.js
+          mv js/modules/index.js js/modules/esptool.js
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
