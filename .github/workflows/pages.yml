@@ -43,12 +43,12 @@ jobs:
           rm -rf dist
           NODE_ENV=production npm exec -- tsc
           NODE_ENV=production npm exec -- rollup -c
-      - name: Rename build artifact
+      - name: Rename and move build artifact
         run: |
           mkdir js/modules
-          ls dist/web/
+          mv dist/web/index.js js/modules/esptool.js
           mv dist/web/*.js js/modules/
-          mv js/modules/index.js js/modules/esptool.js
+          ls js/modules/
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
