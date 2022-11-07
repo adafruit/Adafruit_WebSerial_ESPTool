@@ -46,7 +46,9 @@ jobs:
       - name: Rename build artifact
         run: |
           mkdir js/modules
-          mv dist/web/index.js js/modules/esptool.js
+          ls dist/web/
+          mv dist/web/*.js js/modules/
+          mv js/modules/index.js esptool.js
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
