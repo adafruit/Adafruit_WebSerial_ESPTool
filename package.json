@@ -10,7 +10,7 @@
     "prepublishOnly": "script/build"
   },
   "devDependencies": {
-    "@rollup/plugin-json": "^5.0.1",
+    "@rollup/plugin-json": "^5.0.2",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-typescript": "^10.0.1",
     "@types/pako": "^2.0.0",
