@@ -48,6 +48,7 @@ export const FLASH_WRITE_SIZE = 0x400;
 export const STUB_FLASH_WRITE_SIZE = 0x4000;
 export const FLASH_SECTOR_SIZE = 0x1000; // Flash sector size, minimum unit of erase.
 export const ESP_ROM_BAUD = 115200;
+export const USB_JTAG_SERIAL_PID = 0x1001;
 
 export const ESP8266_SPI_REG_BASE = 0x60000200;
 export const ESP8266_BASEFUSEADDR = 0x3ff00050;

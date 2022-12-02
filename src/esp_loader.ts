@@ -33,6 +33,7 @@ import {
   CHIP_ERASE_TIMEOUT,
   timeoutPerMb,
   ESP_ROM_BAUD,
+  USB_JTAG_SERIAL_PID,
   ESP_FLASH_DEFL_BEGIN,
   ESP_FLASH_DEFL_DATA,
   ESP_FLASH_DEFL_END,
@@ -140,16 +141,67 @@ export class ESPLoader extends EventTarget {
     this.logger.debug("Finished read loop");
   }
 
+  sleep(ms=100) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  state_DTR = false;
+  async setRTS(state:boolean) {
+    await this.port.setSignals({requestToSend:state});
+    // # Work-around for adapters on Windows using the usbser.sys driver:
+    // # generate a dummy change to DTR so that the set-control-line-state
+    // # request is sent with the updated RTS state and the same DTR state
+    // Referenced to esptool.py
+    await this.setDTR(this.state_DTR)
+  }
+
+  async setDTR(state:boolean) {
+    this.state_DTR = state;
+    await this.port.setSignals({dataTerminalReady:state});
+  }
+
   async hardReset(bootloader = false) {
     this.logger.log("Try hard reset.");
-    await this.port.setSignals({
-      dataTerminalReady: false,
-      requestToSend: true,
-    });
-    await this.port.setSignals({
-      dataTerminalReady: bootloader,
-      requestToSend: false,
-    });
+    if (bootloader){
+      // enter flash mode
+      if (this.port.getInfo().usbProductId===USB_JTAG_SERIAL_PID){
+        // esp32c3 esp32s3 etc. build-in USB serial.
+        // when connect to computer direct via usb, using following signals
+        // to enter flash mode automatically.
+        await this.setRTS(false)
+        await this.setDTR(false)
+        await this.sleep(100);
+
+        await this.setDTR(true)
+        await this.setRTS(false)
+        await this.sleep(100);
+
+        await this.setRTS(true)
+        await this.setDTR(false)
+        await this.setRTS(true)
+
+        await this.sleep(100);
+        await this.setRTS(false)
+        await this.setDTR(false)
+      }else {
+        // otherwise, esp chip should be connected to computer via usb-serial
+        // bridge chip like ch340,CP2102 etc.
+        // use normal way to enter flash mode.
+        await this.setDTR(false);
+        await this.setRTS(true);
+        await this.sleep(100);
+        await this.setDTR(true);
+        await this.setRTS(false);
+        await this.sleep(50);
+        await this.setDTR(false);
+      }
+
+    }else {
+      // just reset
+      await this.setRTS(true);  // EN->LOW
+      await this.sleep(100);
+      await this.setRTS(false);
+    }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
