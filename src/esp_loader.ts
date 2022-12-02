@@ -141,49 +141,49 @@ export class ESPLoader extends EventTarget {
     this.logger.debug("Finished read loop");
   }
 
-  sleep(ms=100) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  sleep(ms = 100) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   state_DTR = false;
-  async setRTS(state:boolean) {
-    await this.port.setSignals({requestToSend:state});
+  async setRTS(state: boolean) {
+    await this.port.setSignals({ requestToSend: state });
     // # Work-around for adapters on Windows using the usbser.sys driver:
     // # generate a dummy change to DTR so that the set-control-line-state
     // # request is sent with the updated RTS state and the same DTR state
     // Referenced to esptool.py
-    await this.setDTR(this.state_DTR)
+    await this.setDTR(this.state_DTR);
   }
 
-  async setDTR(state:boolean) {
+  async setDTR(state: boolean) {
     this.state_DTR = state;
-    await this.port.setSignals({dataTerminalReady:state});
+    await this.port.setSignals({ dataTerminalReady: state });
   }
 
   async hardReset(bootloader = false) {
     this.logger.log("Try hard reset.");
-    if (bootloader){
+    if (bootloader) {
       // enter flash mode
-      if (this.port.getInfo().usbProductId===USB_JTAG_SERIAL_PID){
+      if (this.port.getInfo().usbProductId === USB_JTAG_SERIAL_PID) {
         // esp32c3 esp32s3 etc. build-in USB serial.
         // when connect to computer direct via usb, using following signals
         // to enter flash mode automatically.
-        await this.setRTS(false)
-        await this.setDTR(false)
+        await this.setRTS(false);
+        await this.setDTR(false);
         await this.sleep(100);
 
-        await this.setDTR(true)
-        await this.setRTS(false)
+        await this.setDTR(true);
+        await this.setRTS(false);
         await this.sleep(100);
 
-        await this.setRTS(true)
-        await this.setDTR(false)
-        await this.setRTS(true)
+        await this.setRTS(true);
+        await this.setDTR(false);
+        await this.setRTS(true);
 
         await this.sleep(100);
-        await this.setRTS(false)
-        await this.setDTR(false)
-      }else {
+        await this.setRTS(false);
+        await this.setDTR(false);
+      } else {
         // otherwise, esp chip should be connected to computer via usb-serial
         // bridge chip like ch340,CP2102 etc.
         // use normal way to enter flash mode.
@@ -195,10 +195,9 @@ export class ESPLoader extends EventTarget {
         await this.sleep(50);
         await this.setDTR(false);
       }
-
-    }else {
+    } else {
       // just reset
-      await this.setRTS(true);  // EN->LOW
+      await this.setRTS(true); // EN->LOW
       await this.sleep(100);
       await this.setRTS(false);
     }
