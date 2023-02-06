@@ -19,7 +19,7 @@
     "rollup": "^2.48.0",
     "rollup-plugin-terser": "^7.0.2",
     "serve": "^14.1.2",
-    "typescript": "^4.9.4"
+    "typescript": "^4.9.5"
   },
   "dependencies": {
     "@types/node": "^18.11.19",
