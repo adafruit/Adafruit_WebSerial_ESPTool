@@ -24,6 +24,6 @@
   "dependencies": {
     "@types/node": "^18.11.19",
     "pako": "^2.1.0",
-    "tslib": "^2.2.0"
+    "tslib": "^2.5.0"
   }
 }
