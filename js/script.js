@@ -82,7 +82,7 @@ function logMsg(text) {
   }
 }
 
-function debugMsg(debugLevel, ...args) {
+function debugMsg(...args) {
   function getStackTrace() {
     let stack = new Error().stack;
     //console.log(stack);
@@ -101,9 +101,7 @@ function debugMsg(debugLevel, ...args) {
 
     return trace;
   }
-  if (debugLevel > espTool.debug) {
-    return;
-  }
+
   let stack = getStackTrace();
   stack.shift();
   let top = stack.shift();
