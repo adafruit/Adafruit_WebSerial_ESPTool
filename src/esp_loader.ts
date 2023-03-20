@@ -1024,7 +1024,7 @@ export class ESPLoader extends EventTarget {
   }
 
   async runStub(): Promise<EspStubLoader> {
-    const stub = await getStubCode(this.chipFamily);
+    const stub: Record<string, any> = await getStubCode(this.chipFamily);
 
     // We're transferring over USB, right?
     let ramBlock = USB_RAM_BLOCK;

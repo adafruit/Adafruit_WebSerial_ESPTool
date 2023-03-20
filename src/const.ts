@@ -32,7 +32,11 @@ export const ESP32_FLASH_SIZES = {
   "128MB": 0x70,
 };
 
-export const DETECTED_FLASH_SIZES = {
+interface FlashSize {
+  [key: number]: string;
+}
+
+export const DETECTED_FLASH_SIZES: FlashSize = {
   0x12: "256KB",
   0x13: "512KB",
   0x14: "1MB",
@@ -144,7 +148,14 @@ export type ChipFamily =
   | typeof CHIP_FAMILY_ESP32C6
   | typeof CHIP_FAMILY_ESP32H2;
 
-export const CHIP_DETECT_MAGIC_VALUES = {
+interface ChipInfo {
+  [magicValue: number]: {
+    name: string;
+    family: ChipFamily;
+  };
+}
+
+export const CHIP_DETECT_MAGIC_VALUES: ChipInfo = {
   0xfff0c101: { name: "ESP8266", family: CHIP_FAMILY_ESP8266 },
   0x00f01d83: { name: "ESP32", family: CHIP_FAMILY_ESP32 },
   0x000007c6: { name: "ESP32-S2", family: CHIP_FAMILY_ESP32S2 },
