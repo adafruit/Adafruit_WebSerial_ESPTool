@@ -1,4 +1,11 @@
-const lut = {
+interface DataType {
+    [key: string]: {
+        u: Function;
+        p: Function;
+        bytes: number;
+    }
+}
+const lut: DataType = {
   b: { u: DataView.prototype.getInt8, p: DataView.prototype.setInt8, bytes: 1 },
   B: {
     u: DataView.prototype.getUint8,
