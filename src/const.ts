@@ -33,7 +33,7 @@ export const ESP32_FLASH_SIZES = {
 };
 
 interface FlashSize {
-    [key: number]: string;
+  [key: number]: string;
 }
 
 export const DETECTED_FLASH_SIZES: FlashSize = {
@@ -149,10 +149,10 @@ export type ChipFamily =
   | typeof CHIP_FAMILY_ESP32H2;
 
 interface ChipInfo {
-    [magicValue: number]: {
-        name: string;
-        family: ChipFamily;
-    }
+  [magicValue: number]: {
+    name: string;
+    family: ChipFamily;
+  };
 }
 
 export const CHIP_DETECT_MAGIC_VALUES: ChipInfo = {
