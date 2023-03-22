@@ -43,12 +43,6 @@ jobs:
           rm -rf dist
           NODE_ENV=production npm exec -- tsc
           NODE_ENV=production npm exec -- rollup -c
-      - name: Rename and copy build artifact
-        run: |
-          mkdir js/modules
-          cp dist/web/*.js js/modules/
-          mv js/modules/index.js js/modules/esptool.js
-          ls js/modules/
       - name: Commit Distribution Files
         uses: stefanzweifel/git-auto-commit-action@v4
         if: startswith(github.repository, 'adafruit/')
