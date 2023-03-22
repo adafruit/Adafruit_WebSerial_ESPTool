@@ -33,6 +33,7 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
+          git config pull.rebase false
           git pull origin dist
       - name: install node v16
         uses: actions/setup-node@v3
