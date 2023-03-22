@@ -51,7 +51,7 @@ jobs:
           ls js/modules/
       - name: Commit Distribution Files
         uses: stefanzweifel/git-auto-commit-action@v4
-        #if: startswith(github.repository, 'adafruit/')
+        if: startswith(github.repository, 'adafruit/')
         with:
           repository: 'dist'
           commit_message: "Github Action: Updated dist files"
