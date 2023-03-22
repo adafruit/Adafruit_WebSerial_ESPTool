@@ -11,7 +11,7 @@ on:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -43,12 +43,19 @@ jobs:
           rm -rf dist
           NODE_ENV=production npm exec -- tsc
           NODE_ENV=production npm exec -- rollup -c
-      - name: Rename and move build artifact
+      - name: Rename and copy build artifact
         run: |
           mkdir js/modules
-          mv dist/web/index.js js/modules/esptool.js
-          mv dist/web/*.js js/modules/
+          cp dist/web/*.js js/modules/
+          mv js/modules/index.js js/modules/esptool.js
           ls js/modules/
+      - name: Commit Distribution Files
+        uses: stefanzweifel/git-auto-commit-action@v4
+        if: startswith(github.repository, 'adafruit/')
+        with:
+          repository: 'dist'
+          commit_message: "Github Action: Updated dist files"
+          branch: ${{ github.ref }}
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact
