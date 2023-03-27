@@ -6,6 +6,7 @@
   "repository": "https://github.com/adafruit/WebSerial_ESPTool",
   "author": "Melissa LeBlanc-Williams",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "prepublishOnly": "script/build"
   },
