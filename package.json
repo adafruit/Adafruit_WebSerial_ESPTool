@@ -22,7 +22,7 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "@types/node": "^18.15.3",
+    "@types/node": "^18.15.10",
     "pako": "^2.1.0",
     "tslib": "^2.5.0"
   }
