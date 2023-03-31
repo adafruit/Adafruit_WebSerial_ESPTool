@@ -1,9 +1,9 @@
 {
   "name": "adafruit-webserial-esptool",
-  "version": "5.2.0",
+  "version": "6.0.0",
   "description": "Flash ESP devices using WebSerial",
   "main": "dist/index.js",
-  "repository": "https://github.com/adafruit/WebSerial_ESPTool",
+  "repository": "https://github.com/adafruit/Adafruit_WebSerial_ESPTool",
   "author": "Melissa LeBlanc-Williams",
   "license": "MIT",
   "type": "module",
