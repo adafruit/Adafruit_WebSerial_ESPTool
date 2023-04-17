@@ -24,7 +24,7 @@
     "@types/pako": "^2.0.0",
     "@types/w3c-web-serial": "^1.0.3",
     "prettier": "^2.8.7",
-    "rollup": "^3.20.2",
+    "rollup": "^3.20.4",
     "serve": "^14.2.0",
     "typescript": "^5.0.4"
   },
