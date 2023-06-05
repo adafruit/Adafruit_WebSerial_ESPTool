@@ -22,6 +22,10 @@ export declare class ESPLoader extends EventTarget {
      * Reads data from the input stream and places it in the inputBuffer
      */
     readLoop(): Promise<void>;
+    sleep(ms?: number): Promise<unknown>;
+    state_DTR: boolean;
+    setRTS(state: boolean): Promise<void>;
+    setDTR(state: boolean): Promise<void>;
     hardReset(bootloader?: boolean): Promise<void>;
     /**
      * @name macAddr

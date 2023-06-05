@@ -33,6 +33,7 @@ export declare const FLASH_WRITE_SIZE = 1024;
 export declare const STUB_FLASH_WRITE_SIZE = 16384;
 export declare const FLASH_SECTOR_SIZE = 4096;
 export declare const ESP_ROM_BAUD = 115200;
+export declare const USB_JTAG_SERIAL_PID = 4097;
 export declare const ESP8266_SPI_REG_BASE = 1610613248;
 export declare const ESP8266_BASEFUSEADDR = 1072693328;
 export declare const ESP8266_MACFUSEADDR = 1072693328;
