@@ -133,7 +133,7 @@ function debugMsg(...args) {
       logMsg(prefix + "Unhandled type of argument:" + typeof arg);
       console.log(arg);
     }
-    prefix = "";  // Only show for first argument
+    prefix = ""; // Only show for first argument
   }
 }
 

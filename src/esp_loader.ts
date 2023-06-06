@@ -2,7 +2,10 @@ import {
   CHIP_FAMILY_ESP32,
   CHIP_FAMILY_ESP32S2,
   CHIP_FAMILY_ESP32S3,
+  CHIP_FAMILY_ESP32C2,
   CHIP_FAMILY_ESP32C3,
+  CHIP_FAMILY_ESP32C6,
+  CHIP_FAMILY_ESP32H2,
   CHIP_FAMILY_ESP8266,
   MAX_TIMEOUT,
   Logger,
@@ -168,8 +171,8 @@ export class ESPLoader extends EventTarget {
         // esp32c3 esp32s3 etc. build-in USB serial.
         // when connect to computer direct via usb, using following signals
         // to enter flash mode automatically.
-        await this.setRTS(false);
         await this.setDTR(false);
+        await this.setRTS(false);
         await this.sleep(100);
 
         await this.setDTR(true);
@@ -181,8 +184,8 @@ export class ESPLoader extends EventTarget {
         await this.setRTS(true);
 
         await this.sleep(100);
-        await this.setRTS(false);
         await this.setDTR(false);
+        await this.setRTS(false);
       } else {
         // otherwise, esp chip should be connected to computer via usb-serial
         // bridge chip like ch340,CP2102 etc.
@@ -242,7 +245,10 @@ export class ESPLoader extends EventTarget {
     } else if (
       this.chipFamily == CHIP_FAMILY_ESP32S2 ||
       this.chipFamily == CHIP_FAMILY_ESP32S3 ||
-      this.chipFamily == CHIP_FAMILY_ESP32C3
+      this.chipFamily == CHIP_FAMILY_ESP32C2 ||
+      this.chipFamily == CHIP_FAMILY_ESP32C3 ||
+      this.chipFamily == CHIP_FAMILY_ESP32C6 ||
+      this.chipFamily == CHIP_FAMILY_ESP32H2
     ) {
       macAddr[0] = (mac1 >> 8) & 0xff;
       macAddr[1] = mac1 & 0xff;
@@ -295,7 +301,10 @@ export class ESPLoader extends EventTarget {
         CHIP_FAMILY_ESP32,
         CHIP_FAMILY_ESP32S2,
         CHIP_FAMILY_ESP32S3,
+        CHIP_FAMILY_ESP32C2,
         CHIP_FAMILY_ESP32C3,
+        CHIP_FAMILY_ESP32C6,
+        CHIP_FAMILY_ESP32H2,
       ].includes(this.chipFamily)
     ) {
       statusLen = 4;
@@ -726,7 +735,10 @@ export class ESPLoader extends EventTarget {
         CHIP_FAMILY_ESP32,
         CHIP_FAMILY_ESP32S2,
         CHIP_FAMILY_ESP32S3,
+        CHIP_FAMILY_ESP32C2,
         CHIP_FAMILY_ESP32C3,
+        CHIP_FAMILY_ESP32C6,
+        CHIP_FAMILY_ESP32H2,
       ].includes(this.chipFamily)
     ) {
       await this.checkCommand(ESP_SPI_ATTACH, new Array(8).fill(0));
@@ -751,7 +763,10 @@ export class ESPLoader extends EventTarget {
       this.chipFamily == CHIP_FAMILY_ESP32 ||
       this.chipFamily == CHIP_FAMILY_ESP32S2 ||
       this.chipFamily == CHIP_FAMILY_ESP32S3 ||
-      this.chipFamily == CHIP_FAMILY_ESP32C3
+      this.chipFamily == CHIP_FAMILY_ESP32C2 ||
+      this.chipFamily == CHIP_FAMILY_ESP32C3 ||
+      this.chipFamily == CHIP_FAMILY_ESP32C6 ||
+      this.chipFamily == CHIP_FAMILY_ESP32H2
     ) {
       buffer = buffer.concat(pack("<I", encrypted ? 1 : 0));
     }
