@@ -165,7 +165,7 @@ export interface SpiFlashAddresses {
 }
 
 export const SYNC_PACKET = toByteArray(
-  "\x07\x07\x12 UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"
+  "\x07\x07\x12 UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU",
 );
 export const CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000;
 // These values for the families are made up; nothing that esptool uses.
@@ -258,7 +258,7 @@ export const timeoutPerMb = (secondsPerMb: number, sizeBytes: number) => {
 };
 
 export const getSpiFlashAddresses = (
-  chipFamily: ChipFamily
+  chipFamily: ChipFamily,
 ): SpiFlashAddresses => {
   switch (chipFamily) {
     case CHIP_FAMILY_ESP32:

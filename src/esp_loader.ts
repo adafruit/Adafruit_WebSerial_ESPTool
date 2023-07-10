@@ -69,7 +69,7 @@ export class ESPLoader extends EventTarget {
   constructor(
     public port: SerialPort,
     public logger: Logger,
-    private _parent?: ESPLoader
+    private _parent?: ESPLoader,
   ) {
     super();
   }
@@ -95,8 +95,8 @@ export class ESPLoader extends EventTarget {
       throw new Error(
         `Unknown Chip: Hex: ${toHex(
           chipMagicValue >>> 0,
-          8
-        ).toLowerCase()} Number: ${chipMagicValue}`
+          8,
+        ).toLowerCase()} Number: ${chipMagicValue}`,
       );
     }
     this.chipName = chip.name;
@@ -282,7 +282,7 @@ export class ESPLoader extends EventTarget {
     opcode: number,
     buffer: number[],
     checksum = 0,
-    timeout = DEFAULT_TIMEOUT
+    timeout = DEFAULT_TIMEOUT,
   ): Promise<[number, number[]]> {
     timeout = Math.min(timeout, MAX_TIMEOUT);
     await this.sendCommand(opcode, buffer, checksum);
@@ -348,7 +348,7 @@ export class ESPLoader extends EventTarget {
     if (this.debug) {
       this.logger.debug(
         `Writing ${packet.length} byte${packet.length == 1 ? "" : "s"}:`,
-        packet
+        packet,
       );
     }
     await this.writeToStream(packet);
@@ -383,7 +383,7 @@ export class ESPLoader extends EventTarget {
       }
       if (this.debug)
         this.logger.debug(
-          "Read " + readBytes.length + " bytes: " + hexFormatter(readBytes)
+          "Read " + readBytes.length + " bytes: " + hexFormatter(readBytes),
         );
       for (let b of readBytes) {
         if (partialPacket === null) {
@@ -393,15 +393,15 @@ export class ESPLoader extends EventTarget {
           } else {
             if (this.debug) {
               this.logger.debug(
-                "Read invalid data: " + hexFormatter(readBytes)
+                "Read invalid data: " + hexFormatter(readBytes),
               );
               this.logger.debug(
                 "Remaining data in serial buffer: " +
-                  hexFormatter(this._inputBuffer)
+                  hexFormatter(this._inputBuffer),
               );
             }
             throw new SlipReadError(
-              "Invalid head of packet (" + toHex(b) + ")"
+              "Invalid head of packet (" + toHex(b) + ")",
             );
           }
         } else if (inEscape) {
@@ -414,15 +414,15 @@ export class ESPLoader extends EventTarget {
           } else {
             if (this.debug) {
               this.logger.debug(
-                "Read invalid data: " + hexFormatter(readBytes)
+                "Read invalid data: " + hexFormatter(readBytes),
               );
               this.logger.debug(
                 "Remaining data in serial buffer: " +
-                  hexFormatter(this._inputBuffer)
+                  hexFormatter(this._inputBuffer),
               );
             }
             throw new SlipReadError(
-              "Invalid SLIP escape (0xdb, " + toHex(b) + ")"
+              "Invalid SLIP escape (0xdb, " + toHex(b) + ")",
             );
           }
         } else if (b == 0xdb) {
@@ -432,7 +432,7 @@ export class ESPLoader extends EventTarget {
           // end of packet
           if (this.debug)
             this.logger.debug(
-              "Received full packet: " + hexFormatter(partialPacket)
+              "Received full packet: " + hexFormatter(partialPacket),
             );
           return partialPacket;
         } else {
@@ -452,7 +452,7 @@ export class ESPLoader extends EventTarget {
    */
   async getResponse(
     opcode: number,
-    timeout = DEFAULT_TIMEOUT
+    timeout = DEFAULT_TIMEOUT,
   ): Promise<[number, number[]]> {
     for (let i = 0; i < 100; i++) {
       const packet = await this.readPacket(timeout);
@@ -502,7 +502,7 @@ export class ESPLoader extends EventTarget {
     } catch (e) {
       console.error(e);
       throw new Error(
-        `Unable to change the baud rate to ${baud}: No response from set baud rate command.`
+        `Unable to change the baud rate to ${baud}: No response from set baud rate command.`,
       );
     }
 
@@ -596,7 +596,7 @@ export class ESPLoader extends EventTarget {
     binaryData: ArrayBuffer,
     updateProgress: (bytesWritten: number, totalBytes: number) => void,
     offset = 0,
-    compress = false
+    compress = false,
   ) {
     if (binaryData.byteLength >= 8) {
       // unpack the (potential) image header
@@ -607,8 +607,8 @@ export class ESPLoader extends EventTarget {
 
       this.logger.log(
         `Image header, Magic=${toHex(headerMagic)}, FlashMode=${toHex(
-          headerFlashMode
-        )}, FlashSizeFreq=${toHex(headerFlashSizeFreq)}`
+          headerFlashMode,
+        )}, FlashSizeFreq=${toHex(headerFlashSizeFreq)}`,
       );
     }
 
@@ -624,12 +624,12 @@ export class ESPLoader extends EventTarget {
       }).buffer;
       compressedFilesize = dataToFlash.byteLength;
       this.logger.log(
-        `Writing data with filesize: ${uncompressedFilesize}. Compressed Size: ${compressedFilesize}`
+        `Writing data with filesize: ${uncompressedFilesize}. Compressed Size: ${compressedFilesize}`,
       );
       timeout = await this.flashDeflBegin(
         uncompressedFilesize,
         compressedFilesize,
-        offset
+        offset,
       );
     } else {
       this.logger.log(`Writing data with filesize: ${uncompressedFilesize}`);
@@ -649,21 +649,21 @@ export class ESPLoader extends EventTarget {
     while (filesize - position > 0) {
       if (this.debug) {
         this.logger.log(
-          `Writing at ${toHex(offset + seq * flashWriteSize, 8)} `
+          `Writing at ${toHex(offset + seq * flashWriteSize, 8)} `,
         );
       }
       if (filesize - position >= flashWriteSize) {
         block = Array.from(
-          new Uint8Array(dataToFlash, position, flashWriteSize)
+          new Uint8Array(dataToFlash, position, flashWriteSize),
         );
       } else {
         // Pad the last block only if we are sending uncompressed data.
         block = Array.from(
-          new Uint8Array(dataToFlash, position, filesize - position)
+          new Uint8Array(dataToFlash, position, filesize - position),
         );
         if (!compress) {
           block = block.concat(
-            new Array(flashWriteSize - block.length).fill(0xff)
+            new Array(flashWriteSize - block.length).fill(0xff),
           );
         }
       }
@@ -681,11 +681,11 @@ export class ESPLoader extends EventTarget {
       position += flashWriteSize;
       updateProgress(
         Math.min(written, uncompressedFilesize),
-        uncompressedFilesize
+        uncompressedFilesize,
       );
     }
     this.logger.log(
-      "Took " + (Date.now() - stamp) + "ms to write " + filesize + " bytes"
+      "Took " + (Date.now() - stamp) + "ms to write " + filesize + " bytes",
     );
 
     // Only send flashF finish if running the stub because ir causes the ROM to exit and run user code
@@ -708,7 +708,7 @@ export class ESPLoader extends EventTarget {
       ESP_FLASH_DATA,
       pack("<IIII", data.length, seq, 0, 0).concat(data),
       this.checksum(data),
-      timeout
+      timeout,
     );
   }
   async flashDeflBlock(data: number[], seq: number, timeout = DEFAULT_TIMEOUT) {
@@ -716,7 +716,7 @@ export class ESPLoader extends EventTarget {
       ESP_FLASH_DEFL_DATA,
       pack("<IIII", data.length, seq, 0, 0).concat(data),
       this.checksum(data),
-      timeout
+      timeout,
     );
   }
 
@@ -780,12 +780,12 @@ export class ESPLoader extends EventTarget {
         ", offset " +
         toHex(offset, 4) +
         ", encrypted " +
-        (encrypted ? "yes" : "no")
+        (encrypted ? "yes" : "no"),
     );
     await this.checkCommand(ESP_FLASH_BEGIN, buffer, 0, timeout);
     if (size != 0 && !this.IS_STUB) {
       this.logger.log(
-        "Took " + (Date.now() - stamp) + "ms to erase " + numBlocks + " bytes"
+        "Took " + (Date.now() - stamp) + "ms to erase " + numBlocks + " bytes",
       );
     }
     return numBlocks;
@@ -800,13 +800,13 @@ export class ESPLoader extends EventTarget {
     size = 0,
     compressedSize = 0,
     offset = 0,
-    encrypted = false
+    encrypted = false,
   ) {
     // Start downloading compressed data to Flash (performs an erase)
     // Returns number of blocks to write.
     let flashWriteSize = this.getFlashWriteSize();
     let numBlocks = Math.floor(
-      (compressedSize + flashWriteSize - 1) / flashWriteSize
+      (compressedSize + flashWriteSize - 1) / flashWriteSize,
     );
     let eraseBlocks = Math.floor((size + flashWriteSize - 1) / flashWriteSize);
     let writeSize = 0;
@@ -858,7 +858,7 @@ export class ESPLoader extends EventTarget {
     value: number,
     mask = 0xffffffff,
     delayUs = 0,
-    delayAfterUs = 0
+    delayAfterUs = 0,
   ) {
     let buffer = pack("<IIII", address, value, mask, delayUs);
     if (delayAfterUs > 0) {
@@ -869,8 +869,8 @@ export class ESPLoader extends EventTarget {
           getSpiFlashAddresses(this.getChipFamily()).uartDateReg,
           0,
           0,
-          delayAfterUs
-        )
+          delayAfterUs,
+        ),
       );
     }
     await this.checkCommand(ESP_WRITE_REG, buffer);
@@ -879,7 +879,7 @@ export class ESPLoader extends EventTarget {
   async setDataLengths(
     spiAddresses: SpiFlashAddresses,
     mosiBits: number,
-    misoBits: number
+    misoBits: number,
   ) {
     if (spiAddresses.mosiDlenOffs != -1) {
       // ESP32/32S2/32S3/32C3 has a more sophisticated way to set up "user" commands
@@ -915,7 +915,7 @@ export class ESPLoader extends EventTarget {
   async runSpiFlashCommand(
     spiflashCommand: number,
     data: number[],
-    readBits = 0
+    readBits = 0,
   ) {
     // Run an arbitrary SPI flash command.
 
@@ -948,12 +948,12 @@ export class ESPLoader extends EventTarget {
 
     if (readBits > 32) {
       throw new Error(
-        "Reading more than 32 bits back from a SPI flash operation is unsupported"
+        "Reading more than 32 bits back from a SPI flash operation is unsupported",
       );
     }
     if (data.length > 64) {
       throw new Error(
-        "Writing more than 64 bytes of data with one SPI command is unsupported"
+        "Writing more than 64 bytes of data with one SPI command is unsupported",
       );
     }
 
@@ -975,7 +975,7 @@ export class ESPLoader extends EventTarget {
     await this.writeRegister(SPI_USR_REG, flags);
     await this.writeRegister(
       SPI_USR2_REG,
-      (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflashCommand
+      (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflashCommand,
     );
     if (dataBits == 0) {
       await this.writeRegister(SPI_W0_REG, 0); // clear data register before we read it
@@ -989,7 +989,7 @@ export class ESPLoader extends EventTarget {
 
       for (const word of words) {
         this.logger.debug(
-          `Writing word ${toHex(word)} to register offset ${toHex(nextReg)}`
+          `Writing word ${toHex(word)} to register offset ${toHex(nextReg)}`,
         );
         await this.writeRegister(nextReg, word);
         nextReg += 4;
@@ -1015,8 +1015,8 @@ export class ESPLoader extends EventTarget {
     this.logger.log(`Flash Manufacturer: ${manufacturer.toString(16)}`);
     this.logger.log(
       `Flash Device: ${((flashId >> 8) & 0xff).toString(
-        16
-      )}${flashIdLowbyte.toString(16)}`
+        16,
+      )}${flashIdLowbyte.toString(16)}`,
     );
 
     this.flashSize = DETECTED_FLASH_SIZES[flashIdLowbyte];
@@ -1054,11 +1054,11 @@ export class ESPLoader extends EventTarget {
     size: number,
     blocks: number,
     blocksize: number,
-    offset: number
+    offset: number,
   ) {
     return await this.checkCommand(
       ESP_MEM_BEGIN,
-      pack("<IIII", size, blocks, blocksize, offset)
+      pack("<IIII", size, blocks, blocksize, offset),
     );
   }
 
@@ -1070,7 +1070,7 @@ export class ESPLoader extends EventTarget {
     return await this.checkCommand(
       ESP_MEM_DATA,
       pack("<IIII", data.length, seq, 0, 0).concat(data),
-      this.checksum(data)
+      this.checksum(data),
     );
   }
 
@@ -1175,7 +1175,7 @@ class EspStubLoader extends ESPLoader {
     size: number,
     blocks: number,
     blocksize: number,
-    offset: number
+    offset: number,
   ): Promise<any> {
     let stub = await getStubCode(this.chipFamily);
     let load_start = offset;
@@ -1185,7 +1185,7 @@ class EspStubLoader extends ESPLoader {
       stub.data_start,
       stub.data.length,
       stub.text_start,
-      stub.text.length
+      stub.text.length,
     );
     for (let [start, end] of [
       [stub.data_start, stub.data_start + stub.data.length],
@@ -1203,7 +1203,7 @@ class EspStubLoader extends ESPLoader {
             "-" +
             toHex(load_end, 8) +
             ". " +
-            "Try changing the binary loading address."
+            "Try changing the binary loading address.",
         );
       }
     }
