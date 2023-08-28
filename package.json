@@ -25,7 +25,7 @@
     "@types/w3c-web-serial": "^1.0.3",
     "prettier": "^3.0.2",
     "rollup": "^3.28.1",
-    "serve": "^14.2.0",
+    "serve": "^14.2.1",
     "typescript": "^5.2.2"
   },
   "dependencies": {
