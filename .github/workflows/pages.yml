@@ -44,7 +44,7 @@ jobs:
           NODE_ENV=production npm exec -- tsc
           NODE_ENV=production npm exec -- rollup -c
       - name: Commit Distribution Files
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         if: startswith(github.repository, 'adafruit/')
         with:
           repository: 'dist'
