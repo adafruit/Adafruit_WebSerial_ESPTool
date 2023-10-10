@@ -20,7 +20,7 @@
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.3",
-    "@rollup/plugin-typescript": "^11.1.4",
+    "@rollup/plugin-typescript": "^11.1.5",
     "@types/pako": "^2.0.1",
     "@types/w3c-web-serial": "^1.0.4",
     "prettier": "^3.0.3",
