@@ -21,7 +21,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.5",
-    "@types/pako": "^2.0.1",
+    "@types/pako": "^2.0.2",
     "@types/w3c-web-serial": "^1.0.5",
     "prettier": "^3.0.3",
     "rollup": "^4.1.4",
