@@ -379,7 +379,8 @@ async function checkFirmware(event) {
  * Click handler for the clear button.
  */
 async function clickClear() {
-  reset();
+// reset();     Reset function wasnt declared.
+  log.innerHTML = "";
 }
 
 function convertJSON(chunk) {
