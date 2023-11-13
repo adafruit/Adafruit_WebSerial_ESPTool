@@ -23,7 +23,7 @@
     "@rollup/plugin-typescript": "^11.1.5",
     "@types/pako": "^2.0.3",
     "@types/w3c-web-serial": "^1.0.6",
-    "prettier": "^3.0.3",
+    "prettier": "^3.1.0",
     "rollup": "^4.3.0",
     "serve": "^14.2.1",
     "typescript": "^5.2.2"
