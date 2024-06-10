@@ -31,6 +31,6 @@
   "dependencies": {
     "@types/node": "^20.14.2",
     "pako": "^2.1.0",
-    "tslib": "^2.6.2"
+    "tslib": "^2.6.3"
   }
 }
