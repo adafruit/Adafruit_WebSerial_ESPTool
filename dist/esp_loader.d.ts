@@ -1,4 +1,3 @@
-/// <reference types="w3c-web-serial" />
 import { Logger, ChipFamily, SpiFlashAddresses } from "./const";
 export declare class ESPLoader extends EventTarget {
     port: SerialPort;
