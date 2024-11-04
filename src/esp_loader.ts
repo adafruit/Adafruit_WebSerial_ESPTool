@@ -163,8 +163,18 @@ export class ESPLoader extends EventTarget {
     await this.port.setSignals({ dataTerminalReady: state });
   }
 
-  async hardReset(bootloader = false) {
+async hardReset(bootloader = false) {
     this.logger.log("Try hard reset.");
+
+    // Check for noReset toggle
+    const noResetCheckbox = document.getElementById("noReset");
+    const noResetEnabled = noResetCheckbox ? (noResetCheckbox as HTMLInputElement).checked : false;
+
+    if (noResetEnabled) {
+      this.logger.log("No reset requested; skipping hard reset.");
+      return; // Skip reset if noReset is enabled
+    }
+
     if (bootloader) {
       // enter flash mode
       if (this.port.getInfo().usbProductId === USB_JTAG_SERIAL_PID) {
@@ -182,13 +192,12 @@ export class ESPLoader extends EventTarget {
         await this.setRTS(true);
         await this.setDTR(false);
         await this.setRTS(true);
-
         await this.sleep(100);
         await this.setDTR(false);
         await this.setRTS(false);
       } else {
         // otherwise, esp chip should be connected to computer via usb-serial
-        // bridge chip like ch340,CP2102 etc.
+        // bridge chip like ch340, CP2102 etc.
         // use normal way to enter flash mode.
         await this.setDTR(false);
         await this.setRTS(true);
@@ -205,7 +214,7 @@ export class ESPLoader extends EventTarget {
       await this.setRTS(false);
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
+}
 
   /**
    * @name macAddr
