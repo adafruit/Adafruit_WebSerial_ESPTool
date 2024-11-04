@@ -163,12 +163,14 @@ export class ESPLoader extends EventTarget {
     await this.port.setSignals({ dataTerminalReady: state });
   }
 
-async hardReset(bootloader = false) {
+  async hardReset(bootloader = false) {
     this.logger.log("Try hard reset.");
 
     // Check for noReset toggle
     const noResetCheckbox = document.getElementById("noReset");
-    const noResetEnabled = noResetCheckbox ? (noResetCheckbox as HTMLInputElement).checked : false;
+    const noResetEnabled = noResetCheckbox
+      ? (noResetCheckbox as HTMLInputElement).checked
+      : false;
 
     if (noResetEnabled) {
       this.logger.log("No reset requested; skipping hard reset.");
@@ -214,7 +216,7 @@ async hardReset(bootloader = false) {
       await this.setRTS(false);
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
-}
+  }
 
   /**
    * @name macAddr
