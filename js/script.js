@@ -21,6 +21,7 @@ const firmware = document.querySelectorAll(".upload .firmware input");
 const progress = document.querySelectorAll(".upload .progress-bar");
 const offsets = document.querySelectorAll(".upload .offset");
 const appDiv = document.getElementById("app");
+const noReset = document.getElementById("noReset");
 
 document.addEventListener("DOMContentLoaded", () => {
   butConnect.addEventListener("click", () => {
@@ -45,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
   autoscroll.addEventListener("click", clickAutoscroll);
   baudRate.addEventListener("change", changeBaudRate);
   darkMode.addEventListener("click", clickDarkMode);
+  noReset.addEventListener("click", clickNoReset);
   window.addEventListener("error", function (event) {
     console.log("Got an uncaught error: ", event.error);
   });
@@ -242,6 +244,22 @@ async function clickDarkMode() {
 }
 
 /**
+ * @name clickNoReset
+ * Change handler for ESP32 co-processor boards
+ */
+async function clickNoReset() {
+  saveSetting("noReset", noReset.checked);
+  if (espStub) {
+    try {
+      // Assuming espStub has a setNoReset method, similar to setBaudrate
+      await espStub.setNoReset(noReset.checked);
+    } catch (error) {
+      console.error("Failed to set noReset:", error);
+    }
+  }
+}
+
+/**
  * @name clickErase
  * Click handler for the erase button.
  */
@@ -421,6 +439,7 @@ function loadAllSettings() {
   autoscroll.checked = loadSetting("autoscroll", true);
   baudRate.value = loadSetting("baudrate", 115200);
   darkMode.checked = loadSetting("darkmode", false);
+  noReset.checked = loadSetting("noReset", false);
 }
 
 function loadSetting(setting, defaultValue) {

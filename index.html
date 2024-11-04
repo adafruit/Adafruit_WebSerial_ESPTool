@@ -62,6 +62,21 @@
       <div class="subheader">
         <div class="title left">Adafruit ESPTool</div>
         <div class="right">
+          <!-- New No Reset Toggle -->
+          <label for="noReset"> Connect without Reset </label>
+          <div class="onoffswitch" style="margin-right: 30px;">
+            <input
+              type="checkbox"
+              name="noReset"
+              class="onoffswitch-checkbox"
+              id="noReset"
+              checked="false" 
+            />
+            <label class="onoffswitch-label" for="noReset">
+              <span class="onoffswitch-inner"></span>
+              <span class="onoffswitch-switch"></span>
+            </label>
+          </div>
           <label for="darkmode"> Dark Mode </label>
           <div class="onoffswitch">
             <input
@@ -75,6 +90,7 @@
               <span class="onoffswitch-switch"></span>
             </label>
           </div>
+        </div>
         </div>
       </div>
       <div id="app">
