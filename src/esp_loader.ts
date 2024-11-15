@@ -164,10 +164,11 @@ export class ESPLoader extends EventTarget {
   }
 
   async hardReset(bootloader = false) {
-
     // Passthrough mode defaults to "off"
     // Passthrough checkbox is "on" will prevent a controller reset
-    const noResetCheckbox = document.getElementById("noReset") as HTMLInputElement;
+    const noResetCheckbox = document.getElementById(
+      "noReset",
+    ) as HTMLInputElement;
     const noReset = noResetCheckbox ? noResetCheckbox.checked : false;
 
     if (noReset) {
