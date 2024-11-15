@@ -46,7 +46,10 @@ document.addEventListener("DOMContentLoaded", () => {
   autoscroll.addEventListener("click", clickAutoscroll);
   baudRate.addEventListener("change", changeBaudRate);
   darkMode.addEventListener("click", clickDarkMode);
-  noReset.addEventListener("click", clickNoReset);
+  noReset.addEventListener("change", () => {
+    console.log("Checkbox changed:", noReset.checked); // Log checkbox state changes
+  });
+
   window.addEventListener("error", function (event) {
     console.log("Got an uncaught error: ", event.error);
   });
@@ -248,15 +251,8 @@ async function clickDarkMode() {
  * Change handler for ESP32 co-processor boards
  */
 async function clickNoReset() {
+  console.log("Checkbox state:", noReset.checked); // Debugging output
   saveSetting("noReset", noReset.checked);
-  if (espStub) {
-    try {
-      // Assuming espStub has a setNoReset method, similar to setBaudrate
-      await espStub.setNoReset(noReset.checked);
-    } catch (error) {
-      console.error("Failed to set noReset:", error);
-    }
-  }
 }
 
 /**
