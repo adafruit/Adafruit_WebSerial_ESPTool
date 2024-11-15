@@ -164,17 +164,14 @@ export class ESPLoader extends EventTarget {
   }
 
   async hardReset(bootloader = false) {
-    this.logger.log("Try hard reset.");
 
-    // Check for noReset toggle
-    const noResetCheckbox = document.getElementById("noReset");
-    const noResetEnabled = noResetCheckbox
-      ? (noResetCheckbox as HTMLInputElement).checked
-      : false;
+    // Passthrough mode defaults to "off"
+    // Passthrough checkbox is "on" will prevent a controller reset
+    const noResetCheckbox = document.getElementById("noReset") as HTMLInputElement;
+    const noReset = noResetCheckbox ? noResetCheckbox.checked : false;
 
-    if (noResetEnabled) {
-      this.logger.log("No reset requested; skipping hard reset.");
-      return; // Skip reset if noReset is enabled
+    if (noReset) {
+      return; // Skip reset if noReset is true
     }
 
     if (bootloader) {
