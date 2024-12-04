@@ -14,7 +14,7 @@
         window.location.href = "https:" + window.location.href.substring(5);
       }
     </script>
-
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
     <!-- import the web page's stylesheets along with the themes -->
     <link rel="stylesheet" href="https://use.typekit.net/qtk5kiq.css" />
     <link rel="stylesheet" href="css/style.css" />
@@ -32,17 +32,7 @@
       class="alternate"
       disabled
     />
-
-    <!-- import the webpage's javascript file -->
-    <script module>
-      window.esptoolPackage = import(
-        // In development we import locally.
-        window.location.hostname === "localhost"
-          ? "/dist/web/index.js"
-          : "https://cdn.jsdelivr.net/gh/adafruit/Adafruit_WebSerial_ESPTool@latest/dist/web/index.js"
-      );
-    </script>
-    <script src="js/script.js" module defer></script>
+    <script type="module" src="js/script.js" defer></script>
   </head>
   <body>
     <header class="header">
@@ -69,7 +59,7 @@
               name="noReset"
               class="onoffswitch-checkbox"
               id="noReset"
-              checked="false" 
+              checked="false"
             />
             <label class="onoffswitch-label" for="noReset">
               <span class="onoffswitch-inner"></span>
