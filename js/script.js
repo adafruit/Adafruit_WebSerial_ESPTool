@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error(e);
             errorMsg(e.message || e);
             if (espStub) {
-            await espStub.disconnect();
+                await espStub.disconnect();
             }
             toggleUIConnected(false);
         });
@@ -109,60 +109,6 @@ const espLoaderTerminal = {
     },
 };
 
-function debugMsg(...args) {
-    function getStackTrace() {
-        let stack = new Error().stack;
-        //console.log(stack);
-        stack = stack.split("\n").map((v) => v.trim());
-        stack.shift();
-        stack.shift();
-
-        let trace = [];
-        for (let line of stack) {
-            line = line.replace("at ", "");
-            trace.push({
-                func: line.substr(0, line.indexOf("(") - 1),
-                pos: line.substring(line.indexOf(".js:") + 4, line.lastIndexOf(":")),
-            });
-        }
-
-        return trace;
-    }
-
-    let stack = getStackTrace();
-    stack.shift();
-    let top = stack.shift();
-    let prefix = '<span class="debug-function">[' + top.func + ":" + top.pos + "]</span> ";
-    for (let arg of args) {
-        if (arg === undefined) {
-            logMsg(prefix + "undefined");
-        } else if (arg === null) {
-            logMsg(prefix + "null");
-        } else if (typeof arg == "string") {
-            logMsg(prefix + arg);
-        } else if (typeof arg == "number") {
-            logMsg(prefix + arg);
-        } else if (typeof arg == "boolean") {
-            logMsg(prefix + (arg ? "true" : "false"));
-        } else if (Array.isArray(arg)) {
-            logMsg(prefix + "[" + arg.map((value) => toHex(value)).join(", ") + "]");
-        } else if (typeof arg == "object" && arg instanceof Uint8Array) {
-            logMsg(
-                prefix +
-                "[" +
-                Array.from(arg)
-                    .map((value) => toHex(value))
-                    .join(", ") +
-                "]"
-            );
-        } else {
-            logMsg(prefix + "Unhandled type of argument:" + typeof arg);
-            console.log(arg);
-        }
-        prefix = ""; // Only show for first argument
-    }
-}
-
 function errorMsg(text) {
     logMsg('<span class="error-message">Error:</span> ' + text);
     console.error(text);
@@ -189,12 +135,6 @@ function updateTheme() {
 
 function enableStyleSheet(node, enabled) {
     node.disabled = !enabled;
-}
-
-function formatMacAddr(macAddr) {
-    return macAddr
-        .map((value) => value.toString(16).toUpperCase().padStart(2, "0"))
-        .join(":");
 }
 
 /**
@@ -233,6 +173,8 @@ async function clickConnect() {
         // await esploader.flashId();
         toggleUIConnected(true);
         toggleUIToolbar(true);
+
+
     } catch (e) {
         console.error(e);
         errorMsg(e.message);
@@ -245,12 +187,8 @@ async function clickConnect() {
  * Change handler for the Baud Rate selector.
  */
 async function changeBaudRate() {
-    saveSetting("baudrate", baudRate.value);
-    if (espStub) {
-        let baud = parseInt(baudRate.value);
-        if (baudRates.includes(baud)) {
-            await espStub.setBaudrate(baud);
-        }
+    if (baudRates.includes(parseInt(baudRate.value))) {
+        saveSetting("baudrate", baudRate.value);
     }
 }
 
