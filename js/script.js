@@ -1,4 +1,3 @@
-
 import { ESPLoader, Transport } from "https://unpkg.com/esptool-js/bundle.js";
 
 const baudRates = [921600, 115200, 230400, 460800];
@@ -246,22 +245,6 @@ async function clickErase() {
  * Click handler for the program button.
  */
 async function clickProgram() {
-    const readUploadedFileAsArrayBuffer = (inputFile) => {
-        const reader = new FileReader();
-
-        return new Promise((resolve, reject) => {
-            reader.onerror = () => {
-                reader.abort();
-                reject(new DOMException("Problem parsing input file."));
-            };
-
-            reader.onload = () => {
-                resolve(reader.result);
-            };
-            reader.readAsArrayBuffer(inputFile);
-        });
-    };
-
     const readUploadedFileAsBinaryString = (inputFile) => {
         const reader = new FileReader();
 
