@@ -8,10 +8,5 @@ set -e
 # Quit all background tasks when script exits
 trap "kill 0" EXIT
 
-# Run tsc once as rollup expects those files
-#npm exec -- tsc || true
-#npm exec -- rollup -c
-
-#npm exec -- tsc --watch &
 npm exec -- serve -p 5004 &
 wait
