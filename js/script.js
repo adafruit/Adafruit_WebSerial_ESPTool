@@ -1,10 +1,6 @@
-let espStub;
+import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.5.1/bundle.js";
 
 const baudRates = [921600, 115200, 230400, 460800];
-
-const bufferSize = 512;
-const colors = ["#00a7e9", "#f89521", "#be1e2d"];
-const measurementPeriodId = "0001";
 
 const maxLogLength = 100;
 const log = document.getElementById("log");
@@ -23,128 +19,92 @@ const offsets = document.querySelectorAll(".upload .offset");
 const appDiv = document.getElementById("app");
 const noReset = document.getElementById("noReset");
 
+let device = null;
+let transport = null;
+let esploader = null;
+let chip = null;
+const serialLib = !navigator.serial && navigator.usb ? serial : navigator.serial;
+
 document.addEventListener("DOMContentLoaded", () => {
-  butConnect.addEventListener("click", () => {
-    clickConnect().catch(async (e) => {
-      console.error(e);
-      errorMsg(e.message || e);
-      if (espStub) {
-        await espStub.disconnect();
-      }
-      toggleUIConnected(false);
+    butConnect.addEventListener("click", () => {
+        clickConnect().catch(async (e) => {
+            errorMsg(e.message || e);
+            toggleUIConnected(false);
+        });
     });
-  });
-  butClear.addEventListener("click", clickClear);
-  butErase.addEventListener("click", clickErase);
-  butProgram.addEventListener("click", clickProgram);
-  for (let i = 0; i < firmware.length; i++) {
-    firmware[i].addEventListener("change", checkFirmware);
-  }
-  for (let i = 0; i < offsets.length; i++) {
-    offsets[i].addEventListener("change", checkProgrammable);
-  }
-  autoscroll.addEventListener("click", clickAutoscroll);
-  baudRate.addEventListener("change", changeBaudRate);
-  darkMode.addEventListener("click", clickDarkMode);
-  noReset.addEventListener("change", () => {
-    console.log("Checkbox changed:", noReset.checked); // Log checkbox state changes
-  });
+    butClear.addEventListener("click", clickClear);
+    butErase.addEventListener("click", clickErase);
+    butProgram.addEventListener("click", clickProgram);
+    for (let i = 0; i < firmware.length; i++) {
+        firmware[i].addEventListener("change", checkFirmware);
+    }
+    for (let i = 0; i < offsets.length; i++) {
+        offsets[i].addEventListener("change", checkProgrammable);
+    }
+    autoscroll.addEventListener("click", clickAutoscroll);
+    baudRate.addEventListener("change", changeBaudRate);
+    darkMode.addEventListener("click", clickDarkMode);
+    noReset.addEventListener("change", clickNoReset);
 
-  window.addEventListener("error", function (event) {
-    console.log("Got an uncaught error: ", event.error);
-  });
-  if ("serial" in navigator) {
-    const notSupported = document.getElementById("notSupported");
-    notSupported.classList.add("hidden");
-  }
+    window.addEventListener("error", function (event) {
+        console.log("Got an uncaught error: ", event.error);
+    });
+    if ("serial" in navigator) {
+        const notSupported = document.getElementById("notSupported");
+        notSupported.classList.add("hidden");
+    }
 
-  initBaudRate();
-  loadAllSettings();
-  updateTheme();
-  logMsg("ESP Web Flasher loaded.");
+    initBaudRate();
+    loadAllSettings();
+    updateTheme();
+    writeLogLine("ESP Web Flasher loaded.");
 });
 
 function initBaudRate() {
-  for (let rate of baudRates) {
-    var option = document.createElement("option");
-    option.text = rate + " Baud";
-    option.value = rate;
-    baudRate.add(option);
-  }
+    for (let rate of baudRates) {
+        var option = document.createElement("option");
+        option.text = rate + " Baud";
+        option.value = rate;
+        baudRate.add(option);
+    }
 }
 
-function logMsg(text) {
-  log.innerHTML += text + "<br>";
-
-  // Remove old log content
-  if (log.textContent.split("\n").length > maxLogLength + 1) {
-    let logLines = log.innerHTML.replace(/(\n)/gm, "").split("<br>");
-    log.innerHTML = logLines.splice(-maxLogLength).join("<br>\n");
-  }
-
-  if (autoscroll.checked) {
-    log.scrollTop = log.scrollHeight;
-  }
-}
-
-function debugMsg(...args) {
-  function getStackTrace() {
-    let stack = new Error().stack;
-    //console.log(stack);
-    stack = stack.split("\n").map((v) => v.trim());
-    stack.shift();
-    stack.shift();
-
-    let trace = [];
-    for (let line of stack) {
-      line = line.replace("at ", "");
-      trace.push({
-        func: line.substr(0, line.indexOf("(") - 1),
-        pos: line.substring(line.indexOf(".js:") + 4, line.lastIndexOf(":")),
-      });
+function pruneLog() {
+    // Remove old log content
+    if (log.textContent.split("\n").length > maxLogLength + 1) {
+        let logLines = log.innerHTML.replace(/(\n)/gm, "").split("<br>");
+        log.innerHTML = logLines.splice(-maxLogLength).join("<br>\n");
     }
 
-    return trace;
-  }
-
-  let stack = getStackTrace();
-  stack.shift();
-  let top = stack.shift();
-  let prefix =
-    '<span class="debug-function">[' + top.func + ":" + top.pos + "]</span> ";
-  for (let arg of args) {
-    if (arg === undefined) {
-      logMsg(prefix + "undefined");
-    } else if (arg === null) {
-      logMsg(prefix + "null");
-    } else if (typeof arg == "string") {
-      logMsg(prefix + arg);
-    } else if (typeof arg == "number") {
-      logMsg(prefix + arg);
-    } else if (typeof arg == "boolean") {
-      logMsg(prefix + (arg ? "true" : "false"));
-    } else if (Array.isArray(arg)) {
-      logMsg(prefix + "[" + arg.map((value) => toHex(value)).join(", ") + "]");
-    } else if (typeof arg == "object" && arg instanceof Uint8Array) {
-      logMsg(
-        prefix +
-          "[" +
-          Array.from(arg)
-            .map((value) => toHex(value))
-            .join(", ") +
-          "]"
-      );
-    } else {
-      logMsg(prefix + "Unhandled type of argument:" + typeof arg);
-      console.log(arg);
+    if (autoscroll.checked) {
+        log.scrollTop = log.scrollHeight;
     }
-    prefix = ""; // Only show for first argument
-  }
 }
+
+function writeLog(text) {
+    log.innerHTML += text;
+    pruneLog();
+}
+
+function writeLogLine(text) {
+    writeLog(text + "<br>");
+}
+
+const espLoaderTerminal = {
+    clean() {
+        log.innerHTML = "";
+    },
+    writeLine(data) {
+        writeLogLine(data);
+    },
+    write(data) {
+        writeLog(data);
+    },
+};
 
 function errorMsg(text) {
-  logMsg('<span class="error-message">Error:</span> ' + text);
-  console.error(text);
+    writeLogLine('<span class="error-message">Error:</span> ' + text);
+    console.error(text);
 }
 
 /**
@@ -152,28 +112,22 @@ function errorMsg(text) {
  * Sets the theme to  Adafruit (dark) mode. Can be refactored later for more themes
  */
 function updateTheme() {
-  // Disable all themes
-  document
-    .querySelectorAll("link[rel=stylesheet].alternate")
-    .forEach((styleSheet) => {
-      enableStyleSheet(styleSheet, false);
-    });
+    // Disable all themes
+    document
+        .querySelectorAll("link[rel=stylesheet].alternate")
+        .forEach((styleSheet) => {
+        enableStyleSheet(styleSheet, false);
+        });
 
-  if (darkMode.checked) {
-    enableStyleSheet(darkSS, true);
-  } else {
-    enableStyleSheet(lightSS, true);
-  }
+    if (darkMode.checked) {
+        enableStyleSheet(darkSS, true);
+    } else {
+        enableStyleSheet(lightSS, true);
+    }
 }
 
 function enableStyleSheet(node, enabled) {
-  node.disabled = !enabled;
-}
-
-function formatMacAddr(macAddr) {
-  return macAddr
-    .map((value) => value.toString(16).toUpperCase().padStart(2, "0"))
-    .join(":");
+    node.disabled = !enabled;
 }
 
 /**
@@ -181,38 +135,48 @@ function formatMacAddr(macAddr) {
  * Click handler for the connect/disconnect button.
  */
 async function clickConnect() {
-  if (espStub) {
-    await espStub.disconnect();
-    await espStub.port.close();
-    toggleUIConnected(false);
-    espStub = undefined;
-    return;
-  }
+    if (transport !== null) {
+        await transport.disconnect();
+        await transport.waitForUnlock(1500);
+        toggleUIConnected(false);
+        transport = null;
+        device = null;
+        chip = null;
+        return;
+    }
 
-  const esploaderMod = await window.esptoolPackage;
+    if (device === null) {
+        device = await serialLib.requestPort({});
+        transport = new Transport(device, true);
+    }
 
-  const esploader = await esploaderMod.connect({
-    log: (...args) => logMsg(...args),
-    debug: (...args) => debugMsg(...args),
-    error: (...args) => errorMsg(...args),
-  });
-  try {
-    await esploader.initialize();
+    try {
+        const loaderOptions = {
+            transport: transport,
+            baudrate: parseInt(baudRate.value),
+            terminal: espLoaderTerminal,
+            debugLogging: false,
+        };
 
-    logMsg("Connected to " + esploader.chipName);
-    logMsg("MAC Address: " + formatMacAddr(esploader.macAddr()));
+        esploader = new ESPLoader(loaderOptions);
 
-    espStub = await esploader.runStub();
-    toggleUIConnected(true);
-    toggleUIToolbar(true);
-    espStub.addEventListener("disconnect", () => {
-      toggleUIConnected(false);
-      espStub = false;
-    });
-  } catch (err) {
-    await esploader.disconnect();
-    throw err;
-  }
+        let resetMode = "default_reset";
+        if (noReset.checked) {
+            resetMode = "no_reset";
+        }
+        chip = await esploader.main(resetMode);
+
+        // Temporarily broken
+        // await esploader.flashId();
+        toggleUIConnected(true);
+        toggleUIToolbar(true);
+
+
+    } catch (e) {
+        console.error(e);
+        errorMsg(e.message);
+    }
+    console.log("Settings done for :" + chip);
 }
 
 /**
@@ -220,13 +184,9 @@ async function clickConnect() {
  * Change handler for the Baud Rate selector.
  */
 async function changeBaudRate() {
-  saveSetting("baudrate", baudRate.value);
-  if (espStub) {
-    let baud = parseInt(baudRate.value);
-    if (baudRates.includes(baud)) {
-      await espStub.setBaudrate(baud);
+    if (baudRates.includes(parseInt(baudRate.value))) {
+        saveSetting("baudrate", baudRate.value);
     }
-  }
 }
 
 /**
@@ -234,7 +194,7 @@ async function changeBaudRate() {
  * Change handler for the Autoscroll checkbox.
  */
 async function clickAutoscroll() {
-  saveSetting("autoscroll", autoscroll.checked);
+    saveSetting("autoscroll", autoscroll.checked);
 }
 
 /**
@@ -242,8 +202,8 @@ async function clickAutoscroll() {
  * Change handler for the Dark Mode checkbox.
  */
 async function clickDarkMode() {
-  updateTheme();
-  saveSetting("darkmode", darkMode.checked);
+    updateTheme();
+    saveSetting("darkmode", darkMode.checked);
 }
 
 /**
@@ -251,8 +211,7 @@ async function clickDarkMode() {
  * Change handler for ESP32 co-processor boards
  */
 async function clickNoReset() {
-  console.log("Checkbox state:", noReset.checked); // Debugging output
-  saveSetting("noReset", noReset.checked);
+    saveSetting("noReset", noReset.checked);
 }
 
 /**
@@ -260,25 +219,25 @@ async function clickNoReset() {
  * Click handler for the erase button.
  */
 async function clickErase() {
-  if (
-    window.confirm("This will erase the entire flash. Click OK to continue.")
-  ) {
-    baudRate.disabled = true;
-    butErase.disabled = true;
-    butProgram.disabled = true;
-    try {
-      logMsg("Erasing flash memory. Please wait...");
-      let stamp = Date.now();
-      await espStub.eraseFlash();
-      logMsg("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
-    } catch (e) {
-      errorMsg(e);
-    } finally {
-      butErase.disabled = false;
-      baudRate.disabled = false;
-      butProgram.disabled = getValidFiles().length == 0;
+    if (
+        window.confirm("This will erase the entire flash. Click OK to continue.")
+    ) {
+        baudRate.disabled = true;
+        butErase.disabled = true;
+        butProgram.disabled = true;
+        try {
+            writeLogLine("Erasing flash memory. Please wait...");
+            let stamp = Date.now();
+            await esploader.eraseFlash();
+            writeLogLine("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
+        } catch (e) {
+            errorMsg(e);
+        } finally {
+            butErase.disabled = false;
+            baudRate.disabled = false;
+            butProgram.disabled = getValidFiles().length == 0;
+        }
     }
-  }
 }
 
 /**
@@ -286,75 +245,87 @@ async function clickErase() {
  * Click handler for the program button.
  */
 async function clickProgram() {
-  const readUploadedFileAsArrayBuffer = (inputFile) => {
-    const reader = new FileReader();
+    const readUploadedFileAsBinaryString = (inputFile) => {
+        const reader = new FileReader();
 
-    return new Promise((resolve, reject) => {
-      reader.onerror = () => {
-        reader.abort();
-        reject(new DOMException("Problem parsing input file."));
-      };
+        return new Promise((resolve, reject) => {
+            reader.onerror = () => {
+                reader.abort();
+                reject(new DOMException("Problem parsing input file."));
+            };
 
-      reader.onload = () => {
-        resolve(reader.result);
-      };
-      reader.readAsArrayBuffer(inputFile);
-    });
-  };
+            reader.onload = () => {
+                resolve(reader.result);
+            };
+            reader.readAsBinaryString(inputFile);
+        });
+    };
 
-  baudRate.disabled = true;
-  butErase.disabled = true;
-  butProgram.disabled = true;
-  for (let i = 0; i < 4; i++) {
-    firmware[i].disabled = true;
-    offsets[i].disabled = true;
-  }
-  for (let file of getValidFiles()) {
-    progress[file].classList.remove("hidden");
-    let binfile = firmware[file].files[0];
-    let contents = await readUploadedFileAsArrayBuffer(binfile);
-    try {
-      let offset = parseInt(offsets[file].value, 16);
-      const progressBar = progress[file].querySelector("div");
-      await espStub.flashData(
-        contents,
-        (bytesWritten, totalBytes) => {
-          progressBar.style.width =
-            Math.floor((bytesWritten / totalBytes) * 100) + "%";
-        },
-        offset
-      );
-      await sleep(100);
-    } catch (e) {
-      errorMsg(e);
+    baudRate.disabled = true;
+    butErase.disabled = true;
+    butProgram.disabled = true;
+    for (let i = 0; i < 4; i++) {
+        firmware[i].disabled = true;
+        offsets[i].disabled = true;
     }
-  }
-  for (let i = 0; i < 4; i++) {
-    firmware[i].disabled = false;
-    offsets[i].disabled = false;
-    progress[i].classList.add("hidden");
-    progress[i].querySelector("div").style.width = "0";
-  }
-  butErase.disabled = false;
-  baudRate.disabled = false;
-  butProgram.disabled = getValidFiles().length == 0;
-  logMsg("To run the new firmware, please reset your device.");
+
+    const fileArray = [];
+    for (let file of getValidFiles()) {
+        progress[file].classList.remove("hidden");
+        let binfile = firmware[file].files[0];
+        let contents = await readUploadedFileAsBinaryString(binfile);
+        try {
+            let offset = parseInt(offsets[file].value, 16);
+            fileArray.push({ data: contents, address: offset });
+        } catch (e) {
+            errorMsg(e);
+        }
+    }
+
+    try {
+        const flashOptions = {
+            fileArray: fileArray,
+            flashSize: "keep",
+            eraseAll: false,
+            compress: true,
+            reportProgress: (fileIndex, written, total) => {
+                progress[fileIndex].querySelector("div").style.width = Math.floor((written / total) * 100) + "%";
+            },
+            calculateMD5Hash: (image) => CryptoJS.MD5(CryptoJS.enc.Latin1.parse(image)),
+        };
+        await esploader.writeFlash(flashOptions);
+    } catch (e) {
+        console.error(e);
+        errorMsg(e.message);
+    } finally {
+        for (let i = 0; i < 4; i++) {
+            firmware[i].disabled = false;
+            offsets[i].disabled = false;
+            progress[i].classList.add("hidden");
+            progress[i].querySelector("div").style.width = "0";
+        }
+        butErase.disabled = false;
+        baudRate.disabled = false;
+        butProgram.disabled = getValidFiles().length == 0;
+    }
+
+    writeLogLine("To run the new firmware, please reset your device.");
 }
 
 function getValidFiles() {
-  // Get a list of file and offsets
-  // This will be used to check if we have valid stuff
-  // and will also return a list of files to program
-  let validFiles = [];
-  let offsetVals = [];
-  for (let i = 0; i < 4; i++) {
-    let offs = parseInt(offsets[i].value, 16);
-    if (firmware[i].files.length > 0 && !offsetVals.includes(offs)) {
-      validFiles.push(i);
-      offsetVals.push(offs);
+    // Get a list of file and offsets
+    // This will be used to check if we have valid stuff
+    // and will also return a list of files to program
+    let validFiles = [];
+    let offsetVals = [];
+    for (let i = 0; i < 4; i++) {
+        let offs = parseInt(offsets[i].value, 16);
+        if (firmware[i].files.length > 0 && !offsetVals.includes(offs)) {
+            validFiles.push(i);
+            offsetVals.push(offs);
+        }
     }
-  }
-  return validFiles;
+    return validFiles;
 }
 
 /**
@@ -362,7 +333,7 @@ function getValidFiles() {
  * Check if the conditions to program the device are sufficient
  */
 async function checkProgrammable() {
-  butProgram.disabled = getValidFiles().length == 0;
+    butProgram.disabled = getValidFiles().length == 0;
 }
 
 /**
@@ -370,22 +341,22 @@ async function checkProgrammable() {
  * Handler for firmware upload changes
  */
 async function checkFirmware(event) {
-  let filename = event.target.value.split("\\").pop();
-  let label = event.target.parentNode.querySelector("span");
-  let icon = event.target.parentNode.querySelector("svg");
-  if (filename != "") {
-    if (filename.length > 17) {
-      label.innerHTML = filename.substring(0, 14) + "&hellip;";
+    let filename = event.target.value.split("\\").pop();
+    let label = event.target.parentNode.querySelector("span");
+    let icon = event.target.parentNode.querySelector("svg");
+    if (filename != "") {
+        if (filename.length > 17) {
+            label.innerHTML = filename.substring(0, 14) + "&hellip;";
+        } else {
+            label.innerHTML = filename;
+        }
+        icon.classList.add("hidden");
     } else {
-      label.innerHTML = filename;
+        label.innerHTML = "Choose a file&hellip;";
+        icon.classList.remove("hidden");
     }
-    icon.classList.add("hidden");
-  } else {
-    label.innerHTML = "Choose a file&hellip;";
-    icon.classList.remove("hidden");
-  }
 
-  await checkProgrammable();
+    await checkProgrammable();
 }
 
 /**
@@ -393,71 +364,54 @@ async function checkFirmware(event) {
  * Click handler for the clear button.
  */
 async function clickClear() {
-// reset();     Reset function wasnt declared.
-  log.innerHTML = "";
-}
-
-function convertJSON(chunk) {
-  try {
-    let jsonObj = JSON.parse(chunk);
-    return jsonObj;
-  } catch (e) {
-    return chunk;
-  }
+    // reset();     Reset function wasnt declared.
+    log.innerHTML = "";
 }
 
 function toggleUIToolbar(show) {
-  isConnected = show;
-  for (let i = 0; i < 4; i++) {
-    progress[i].classList.add("hidden");
-    progress[i].querySelector("div").style.width = "0";
-  }
-  if (show) {
-    appDiv.classList.add("connected");
-  } else {
-    appDiv.classList.remove("connected");
-  }
-  butErase.disabled = !show;
+    for (let i = 0; i < 4; i++) {
+        progress[i].classList.add("hidden");
+        progress[i].querySelector("div").style.width = "0";
+    }
+    if (show) {
+        appDiv.classList.add("connected");
+    } else {
+        appDiv.classList.remove("connected");
+    }
+    butErase.disabled = !show;
 }
 
 function toggleUIConnected(connected) {
-  let lbl = "Connect";
-  if (connected) {
-    lbl = "Disconnect";
-  } else {
-    toggleUIToolbar(false);
-  }
-  butConnect.textContent = lbl;
+    let lbl = "Connect";
+    if (connected) {
+        lbl = "Disconnect";
+    } else {
+        toggleUIToolbar(false);
+    }
+    butConnect.textContent = lbl;
 }
 
 function loadAllSettings() {
-  // Load all saved settings or defaults
-  autoscroll.checked = loadSetting("autoscroll", true);
-  baudRate.value = loadSetting("baudrate", 115200);
-  darkMode.checked = loadSetting("darkmode", false);
-  noReset.checked = loadSetting("noReset", false);
+    // Load all saved settings or defaults
+    autoscroll.checked = loadSetting("autoscroll", true);
+    baudRate.value = loadSetting("baudrate", 115200);
+    darkMode.checked = loadSetting("darkmode", false);
+    noReset.checked = loadSetting("noReset", false);
 }
 
 function loadSetting(setting, defaultValue) {
-  let value = JSON.parse(window.localStorage.getItem(setting));
-  if (value == null) {
-    return defaultValue;
-  }
+    let value = JSON.parse(window.localStorage.getItem(setting));
+    if (value == null) {
+        return defaultValue;
+    }
 
-  return value;
+    return value;
 }
 
 function saveSetting(setting, value) {
-  window.localStorage.setItem(setting, JSON.stringify(value));
-}
-
-function ucWords(text) {
-  return text
-    .replace("_", " ")
-    .toLowerCase()
-    .replace(/(?<= )[^\s]|^./g, (a) => a.toUpperCase());
+    window.localStorage.setItem(setting, JSON.stringify(value));
 }
 
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
