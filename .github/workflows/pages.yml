@@ -22,29 +22,13 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build from Source and Deploy
+    name: Deploy
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: install node v16
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - name: Install Yarn with NPM
-        run: npm install -g yarn
-      - name: yarn install
-        run: yarn install
-      - name: Commit Distribution Files
-        uses: stefanzweifel/git-auto-commit-action@v5
-        if: startswith(github.repository, 'adafruit/')
-        with:
-          repository: 'dist'
-          commit_message: "Github Action: Updated dist files"
-          status_options: '--ignored=matching'
-          add_options: '-fA'
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
