@@ -135,25 +135,34 @@ function enableStyleSheet(node, enabled) {
  * Click handler for the connect/disconnect button.
  */
 async function clickConnect() {
+    // Disconnect if connected
     if (transport !== null) {
         await transport.disconnect();
         await transport.waitForUnlock(1500);
         toggleUIConnected(false);
         transport = null;
-        device = null;
+        if (device !== null) {
+            await device.close();
+            device = null;
+        }
         chip = null;
         return;
     }
 
+    // Set up device and transport
     if (device === null) {
         device = await serialLib.requestPort({});
+    }
+
+    if (transport === null) {
         transport = new Transport(device, true);
     }
 
     try {
+        const romBaudrate = parseInt(baudRate.value);
         const loaderOptions = {
             transport: transport,
-            baudrate: parseInt(baudRate.value),
+            baudrate: romBaudrate,
             terminal: espLoaderTerminal,
             debugLogging: false,
         };
@@ -163,14 +172,21 @@ async function clickConnect() {
         let resetMode = "default_reset";
         if (noReset.checked) {
             resetMode = "no_reset";
+            try {
+                // Initiate passthrough serial setup
+                await transport.connect(romBaudrate);
+                await transport.disconnect();
+                await sleep(350);
+            } catch (e) {
+            }
         }
+
         chip = await esploader.main(resetMode);
 
         // Temporarily broken
         // await esploader.flashId();
         toggleUIConnected(true);
         toggleUIToolbar(true);
-
 
     } catch (e) {
         console.error(e);
