@@ -182,7 +182,21 @@ async function clickConnect() {
             }
         }
 
-        chip = await esploader.main(resetMode);
+        try {
+            chip = await esploader.main(resetMode);
+        } catch (e) {
+            // If the port is wedged, close and re-open.
+            try {
+                if (device) {
+                    await device.close();
+                }
+            } catch (e) {
+            }
+            device = await serialLib.requestPort({});
+            transport = new Transport(device, true);
+            esploader = new ESPLoader(loaderOptions);
+            chip = await esploader.main(resetMode);
+        }
 
         // Temporarily broken
         // await esploader.flashId();
