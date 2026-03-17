@@ -1,5 +1,5 @@
-import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
-//import { ESPLoader, Transport } from "./esptool-js/bundle.js";
+//import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
+import { ESPLoader, Transport } from "./bundle.js";
 
 const baudRates = [921600, 115200, 230400, 460800];
 
@@ -262,7 +262,7 @@ async function clickErase() {
  * Click handler for the program button.
  */
 async function clickProgram() {
-    const readUploadedFileAsBinaryString = (inputFile) => {
+    const readUploadedFileAsArrayBuffer = (inputFile) => {
         const reader = new FileReader();
 
         return new Promise((resolve, reject) => {
@@ -274,7 +274,7 @@ async function clickProgram() {
             reader.onload = () => {
                 resolve(reader.result);
             };
-            reader.readAsBinaryString(inputFile);
+            reader.readAsArrayBuffer(inputFile);
         });
     };
 
@@ -290,7 +290,7 @@ async function clickProgram() {
     for (let file of getValidFiles()) {
         progress[file].classList.remove("hidden");
         let binfile = firmware[file].files[0];
-        let contents = await readUploadedFileAsBinaryString(binfile);
+        let contents = new Uint8Array(await readUploadedFileAsArrayBuffer(binfile));
         try {
             let offset = parseInt(offsets[file].value, 16);
             fileArray.push({ data: contents, address: offset });
@@ -308,7 +308,6 @@ async function clickProgram() {
             reportProgress: (fileIndex, written, total) => {
                 progress[fileIndex].querySelector("div").style.width = Math.floor((written / total) * 100) + "%";
             },
-            calculateMD5Hash: (image) => CryptoJS.MD5(CryptoJS.enc.Latin1.parse(image)),
         };
         await esploader.writeFlash(flashOptions);
     } catch (e) {
