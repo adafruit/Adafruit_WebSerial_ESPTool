@@ -1,4 +1,5 @@
 //import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
+// Using local copy of the latest esptool-js bundle while waiting for an official release
 import { ESPLoader, Transport } from "./bundle.js";
 
 const baudRates = [921600, 115200, 230400, 460800];
