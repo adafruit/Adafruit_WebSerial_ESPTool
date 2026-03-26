@@ -1,6 +1,6 @@
-//import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
-// Using local copy of the latest esptool-js bundle while waiting for an official release
-import { ESPLoader, Transport } from "./bundle.js";
+import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.6.0/bundle.js";
+// Previously using local copy of the esptool-js bundle
+//import { ESPLoader, Transport } from "./bundle.js";
 
 const baudRates = [921600, 115200, 230400, 460800];
 
@@ -12,7 +12,7 @@ const butClear = document.getElementById("butClear");
 const butErase = document.getElementById("butErase");
 const butProgram = document.getElementById("butProgram");
 const autoscroll = document.getElementById("autoscroll");
-const lightSS = document.getElementById("light");
+const lightSS = document.getElementById("liht");
 const darkSS = document.getElementById("dark");
 const darkMode = document.getElementById("darkmode");
 const firmware = document.querySelectorAll(".upload .firmware input");
