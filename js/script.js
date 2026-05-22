@@ -51,6 +51,10 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("error", function (event) {
         console.log("Got an uncaught error: ", event.error);
     });
+    if ("serial" in navigator) {
+        const notSupported = document.getElementById("notSupported");
+        notSupported.classList.add("hidden");
+    }
 
     initBaudRate();
     loadAllSettings();
